@@ -1,0 +1,560 @@
+import 'dart:io';
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:heroicons/heroicons.dart';
+import 'package:file_picker/file_picker.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Whalyze',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        scaffoldBackgroundColor: Colors.white,
+      ),
+      home: const HomeScreen(),
+    );
+  }
+}
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _selectedIndex = 0; // Whalyze expandido por defecto
+  static const MethodChannel _channel = MethodChannel('com.example.wra5/file');
+
+  final List<String> _titles = ['Whalyze', 'Detectar red flags', 'Roast me'];
+
+  final List<List<Color>> _gradientColors = [
+    [const Color(0xFF00C980), const Color(0xFF00A6B6)], // Whalyze
+    [const Color(0xFFFF3B30), const Color(0xFFFF6B8A)], // Detectar red flags
+    [const Color(0xFFA2713F), const Color(0xFFE3B87A)], // Roast me
+  ];
+
+  final List<String> _buttonTexts = [
+    'Hacer mi Whalyze',
+    'Hacer mi Red Flags',
+    'Hacer mi Roast',
+  ];
+
+  final List<String> _descriptions = [
+    'Genera un resumen divertido con cualquier conversación de whatsapp!',
+    'Detecta redflags con IA y crea un resumen divertido',
+    'Crea mi roast me al estilo americano',
+  ];
+
+  final List<String> _costs = [
+    'Coste: Gratuito',
+    'Coste: 1,99€',
+    'Coste: 1,99€',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Esperar a que el widget esté completamente construido antes de verificar el archivo
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkInitialSharedFile();
+    });
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  void _checkInitialSharedFile() async {
+    // Verificar si hay un archivo compartido al iniciar la app
+    try {
+      // Esperar un poco para que el intent se procese completamente
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      final String? filePath = await _channel.invokeMethod('getSharedFile');
+      if (filePath != null && filePath.isNotEmpty) {
+        // Procesar el archivo (ya viene filtrado por MIME type en AndroidManifest)
+        await _processFile(filePath);
+      }
+    } catch (e) {
+      // Si no hay archivo compartido o hay error, continuar normalmente
+      print('No hay archivo compartido o error: $e');
+    }
+  }
+
+  Future<void> _processFile(String filePath) async {
+    try {
+      String content;
+
+      // Manejar URIs de content:// (usados por WhatsApp al compartir)
+      if (filePath.startsWith('content://')) {
+        // Leer desde content URI usando el método channel
+        final String? fileContent =
+            await _channel.invokeMethod('readContentUri', {'uri': filePath});
+        if (fileContent == null) {
+          throw Exception('No se pudo leer el archivo desde content URI');
+        }
+        content = fileContent;
+      } else {
+        // Leer archivo normal
+        final file = File(filePath);
+        if (!await file.exists()) {
+          throw Exception('El archivo no existe');
+        }
+        content = await file.readAsString();
+      }
+
+      final lineCount = content.split('\n').length;
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Text(
+                'Archivo procesado',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              content: Text(
+                '$lineCount líneas',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text(
+                    'Cerrar',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al procesar el archivo: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: HeroIcon(
+            HeroIcons.heart,
+            style: HeroIconStyle.outline,
+            color: Colors.black87,
+            size: 24,
+          ),
+        ),
+        title: const Text(
+          'Whalyze',
+          style: TextStyle(
+            color: Colors.black87,
+            fontSize: 24,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        centerTitle: true,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: HeroIcon(
+              HeroIcons.moon,
+              style: HeroIconStyle.outline,
+              color: Colors.black87,
+              size: 24,
+            ),
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: List.generate(
+              _titles.length,
+              (index) => Padding(
+                padding: EdgeInsets.only(
+                  bottom: index < _titles.length - 1 ? 12 : 0,
+                ),
+                child: _ExpansionItem(
+                  title: _titles[index],
+                  gradientColors: _gradientColors[index],
+                  buttonText: _buttonTexts[index],
+                  description: _descriptions[index],
+                  cost: _costs[index],
+                  isExpanded: _selectedIndex == index,
+                  onTap: () {
+                    setState(() {
+                      _selectedIndex = _selectedIndex == index ? -1 : index;
+                    });
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ExpansionItem extends StatefulWidget {
+  final String title;
+  final List<Color> gradientColors;
+  final String buttonText;
+  final String description;
+  final String cost;
+  final bool isExpanded;
+  final VoidCallback onTap;
+
+  const _ExpansionItem({
+    required this.title,
+    required this.gradientColors,
+    required this.buttonText,
+    required this.description,
+    required this.cost,
+    required this.isExpanded,
+    required this.onTap,
+  });
+
+  @override
+  State<_ExpansionItem> createState() => _ExpansionItemState();
+}
+
+class _ExpansionItemState extends State<_ExpansionItem>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _expandAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _expandAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    );
+    if (widget.isExpanded) {
+      _controller.value = 1.0;
+    }
+  }
+
+  @override
+  void didUpdateWidget(_ExpansionItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isExpanded != oldWidget.isExpanded) {
+      if (widget.isExpanded) {
+        _controller.forward();
+      } else {
+        _controller.reverse();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _showExportDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            '¿Cómo exportar un chat?',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                've a whatsapp -> la conversación que quieras -> exportar -> abrir con Whalyze',
+                style: TextStyle(
+                  fontSize: 16,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'o también puedes seleccionar el archivo desde aquí:',
+                style: TextStyle(
+                  fontSize: 16,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    try {
+                      FilePickerResult? result =
+                          await FilePicker.platform.pickFiles(
+                        type: FileType.any,
+                        allowMultiple: false,
+                      );
+
+                      if (result != null && result.files.single.path != null) {
+                        // Archivo seleccionado
+                        Navigator.of(context).pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Archivo seleccionado: ${result.files.single.name}',
+                            ),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      // Manejo de errores del plugin
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Error al seleccionar archivo. Por favor, reinicia la app completamente.',
+                          ),
+                          backgroundColor: Colors.red,
+                          duration: const Duration(seconds: 4),
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Seleccionar archivo',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text(
+                'Cerrar',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Título clickeable
+        GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            decoration: BoxDecoration(
+              borderRadius: widget.isExpanded
+                  ? const BorderRadius.only(
+                      topLeft: Radius.circular(12),
+                      topRight: Radius.circular(12),
+                    )
+                  : BorderRadius.circular(12),
+              gradient: LinearGradient(
+                colors: widget.gradientColors,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.title,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: widget.isExpanded
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                    ),
+                  ),
+                ),
+                AnimatedRotation(
+                  duration: const Duration(milliseconds: 300),
+                  turns: widget.isExpanded ? 0.5 : 0,
+                  child: Icon(
+                    Icons.keyboard_arrow_down,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        // Contenido expandible
+        SizeTransition(
+          sizeFactor: _expandAnimation,
+          axisAlignment: -1.0,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(12),
+                bottomRight: Radius.circular(12),
+              ),
+              color: Colors.white,
+              border: Border.all(
+                color: widget.gradientColors[0],
+                width: 2,
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    widget.description,
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 20,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Botón Ver ejemplos
+                  ElevatedButton(
+                    onPressed: () {},
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey[300],
+                      foregroundColor: Colors.black87,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 2,
+                    ),
+                    child: const Text(
+                      'Ver ejemplos',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Botón Hacer mi X
+                  ElevatedButton(
+                    onPressed: () {
+                      _showExportDialog(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: widget.gradientColors[0],
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 2,
+                    ),
+                    child: Text(
+                      widget.buttonText,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Coste
+                  Text(
+                    widget.cost,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: widget.title == 'Whalyze'
+                          ? const Color(0xFF9D4EDD)
+                          : Colors.black87,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
