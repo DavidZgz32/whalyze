@@ -3,6 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'whatsapp_processor.dart';
 import 'services/wrapped_storage.dart';
 import 'models/wrapped_model.dart';
+import 'screens/wrapped/wrapped_first_screen.dart';
+import 'screens/wrapped/wrapped_second_screen.dart';
+import 'screens/wrapped/wrapped_placeholder_screen.dart';
 
 class WrappedScreen extends StatefulWidget {
   final String filePath;
@@ -31,6 +34,9 @@ class _WrappedScreenState extends State<WrappedScreen>
   bool _hasBeenSaved = false; // Flag para evitar guardar múltiples veces
   bool _isPaused = false; // Flag para pausar animación
   static const int _totalScreens = 9;
+  
+  // Referencia a la primera pantalla para controlar animaciones
+  final GlobalKey<WrappedFirstScreenState> _firstScreenKey = GlobalKey<WrappedFirstScreenState>();
 
   @override
   void initState() {
@@ -105,6 +111,11 @@ class _WrappedScreenState extends State<WrappedScreen>
           _progressController.reset();
           _fadeController.forward();
           _progressController.forward();
+          
+          // Reiniciar animaciones si volvemos a la primera pantalla
+          if (_currentScreen == 0) {
+            _firstScreenKey.currentState?.resetAnimations();
+          }
         }).catchError((error) {
           print('Error en fade reverse: $error');
         });
@@ -120,15 +131,37 @@ class _WrappedScreenState extends State<WrappedScreen>
 
   void _pauseAnimation() {
     if (!_isPaused && _progressController.isAnimating) {
-      _isPaused = true;
+      setState(() {
+        _isPaused = true;
+      });
       _progressController.stop(canceled: false);
+      
+      // Pausar animaciones de la primera pantalla si estamos en ella
+      if (_currentScreen == 0) {
+        _firstScreenKey.currentState?.pauseAnimations();
+      }
     }
   }
 
   void _resumeAnimation() {
     if (_isPaused) {
-      _isPaused = false;
+      setState(() {
+        _isPaused = false;
+      });
       _progressController.forward();
+      
+      // Reanudar animaciones de la primera pantalla si estamos en ella
+      if (_currentScreen == 0) {
+        _firstScreenKey.currentState?.resumeAnimations();
+      }
+    }
+  }
+
+  void _togglePlayPause() {
+    if (_isPaused) {
+      _resumeAnimation();
+    } else {
+      _pauseAnimation();
     }
   }
 
@@ -143,6 +176,11 @@ class _WrappedScreenState extends State<WrappedScreen>
         _progressController.reset();
         _fadeController.forward();
         _progressController.forward();
+        
+        // Reiniciar animaciones si volvemos a la primera pantalla
+        if (_currentScreen == 0) {
+          _firstScreenKey.currentState?.resetAnimations();
+        }
       });
     }
   }
@@ -158,9 +196,15 @@ class _WrappedScreenState extends State<WrappedScreen>
         _progressController.reset();
         _fadeController.forward();
         _progressController.forward();
+        
+        // Reiniciar animaciones si volvemos a la primera pantalla
+        if (_currentScreen == 0) {
+          _firstScreenKey.currentState?.resetAnimations();
+        }
       });
     }
   }
+  
 
   void _handleTap(TapDownDetails details) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -337,18 +381,38 @@ class _WrappedScreenState extends State<WrappedScreen>
                 opacity: _fadeAnimation,
                 child: _buildScreen(),
               ),
-              // Botón X en la esquina superior derecha
+              // Botones de control en la esquina superior derecha
               Positioned(
                 top: MediaQuery.of(context).padding.top + (_totalScreens * 4) + ((_totalScreens - 1) * 2) + 16,
                 right: 16,
-                child: IconButton(
-                  onPressed: () {
-                    Navigator.of(context).popUntil((route) => route.isFirst);
-                  },
-                  icon: const Icon(
-                    Icons.close,
-                    color: Colors.white,
-                    size: 28,
+                child: GestureDetector(
+                  onTap: () {}, // Absorber taps para evitar que lleguen al GestureDetector principal
+                  behavior: HitTestBehavior.opaque,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Botón play/pause
+                      IconButton(
+                        onPressed: _togglePlayPause,
+                        icon: Icon(
+                          _isPaused ? Icons.play_arrow : Icons.pause,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Botón X
+                      IconButton(
+                        onPressed: () {
+                          Navigator.of(context).popUntil((route) => route.isFirst);
+                        },
+                        icon: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -360,132 +424,24 @@ class _WrappedScreenState extends State<WrappedScreen>
   }
 
   Widget _buildScreen() {
-    // Por ahora, mostrar las primeras 2 pantallas como antes
-    // Más adelante se pueden agregar las otras 7
     if (_currentScreen == 0) {
-      return _buildFirstScreen();
+      return WrappedFirstScreen(
+        key: _firstScreenKey,
+        data: _data!,
+        totalScreens: _totalScreens,
+      );
     } else if (_currentScreen == 1) {
-      return _buildSecondScreen();
+      return WrappedSecondScreen(
+        data: _data!,
+        totalScreens: _totalScreens,
+      );
     } else {
       // Pantallas adicionales (2-8) - por ahora mostrar placeholder
-      return _buildPlaceholderScreen();
+      return WrappedPlaceholderScreen(
+        screenNumber: _currentScreen,
+        totalScreens: _totalScreens,
+      );
     }
-  }
-
-  Widget _buildFirstScreen() {
-    return SizedBox(
-      width: double.infinity,
-      height: double.infinity,
-      child: Padding(
-        padding: EdgeInsets.only(
-          top: MediaQuery.of(context).padding.top + (_totalScreens * 4) + ((_totalScreens - 1) * 2) + 60,
-          bottom: MediaQuery.of(context).padding.bottom + 32,
-          left: 32,
-          right: 32,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Spacer(),
-            Text(
-              '${_data!.totalLines}',
-              style: GoogleFonts.inter(
-                fontSize: 80,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'líneas',
-              style: GoogleFonts.poppins(
-                fontSize: 32,
-                fontWeight: FontWeight.w500,
-                color: Colors.white.withOpacity(0.9),
-              ),
-            ),
-            const Spacer(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSecondScreen() {
-    return SizedBox(
-      width: double.infinity,
-      height: double.infinity,
-      child: Padding(
-        padding: EdgeInsets.only(
-          top: MediaQuery.of(context).padding.top + (_totalScreens * 4) + ((_totalScreens - 1) * 2) + 60,
-          bottom: MediaQuery.of(context).padding.bottom + 32,
-          left: 32,
-          right: 32,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Spacer(),
-            Text(
-              'Participantes',
-              style: GoogleFonts.inter(
-                fontSize: 32,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 32),
-            ..._data!.participants.map((participant) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
-                child: Text(
-                  participant,
-                  style: GoogleFonts.poppins(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white.withOpacity(0.9),
-                  ),
-                ),
-              );
-            }),
-            const Spacer(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPlaceholderScreen() {
-    return SizedBox(
-      width: double.infinity,
-      height: double.infinity,
-      child: Padding(
-        padding: EdgeInsets.only(
-          top: MediaQuery.of(context).padding.top + (_totalScreens * 4) + ((_totalScreens - 1) * 2) + 60,
-          bottom: MediaQuery.of(context).padding.bottom + 32,
-          left: 32,
-          right: 32,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Spacer(),
-            Text(
-              'Pantalla ${_currentScreen + 1}',
-              style: GoogleFonts.inter(
-                fontSize: 32,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-            const Spacer(),
-          ],
-        ),
-      ),
-    );
   }
 }
 

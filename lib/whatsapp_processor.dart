@@ -125,5 +125,39 @@ class WhatsAppData {
       },
     };
   }
+
+  /// Reconstruye WhatsAppData desde un JSON guardado
+  factory WhatsAppData.fromJson(Map<String, dynamic> json) {
+    DateTime? firstMessageDate;
+    DateTime? lastMessageDate;
+    
+    if (json['firstMessageDate'] != null) {
+      try {
+        firstMessageDate = DateTime.parse(json['firstMessageDate'] as String);
+      } catch (e) {
+        // Ignorar errores de parsing
+      }
+    }
+    
+    if (json['lastMessageDate'] != null) {
+      try {
+        lastMessageDate = DateTime.parse(json['lastMessageDate'] as String);
+      } catch (e) {
+        // Ignorar errores de parsing
+      }
+    }
+
+    return WhatsAppData(
+      totalLines: json['totalLines'] as int? ?? 0,
+      participants: List<String>.from(json['participants'] as List? ?? []),
+      totalMessages: json['totalMessages'] as int? ?? 0,
+      messagesByParticipant: Map<String, int>.from(json['messagesByParticipant'] as Map? ?? {}),
+      firstMessageDate: firstMessageDate,
+      lastMessageDate: lastMessageDate,
+      totalWords: json['totalWords'] as int? ?? 0,
+      averageMessageLength: json['averageMessageLength'] as int? ?? 0,
+      allMessages: List<Map<String, dynamic>>.from(json['messages'] as List? ?? []),
+    );
+  }
 }
 

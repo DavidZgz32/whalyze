@@ -113,8 +113,306 @@ Frases o patrones recurrentes
 <!-- Define las convenciones de código que se deben seguir -->
 
 
+## Formato de Archivos WhatsApp (.txt)
+
+### Estructura General del Formato
+
+Los archivos exportados de WhatsApp siguen un formato específico que debe parsearse correctamente:
+
+```
+DD/MM/YY, HH:MM - [Participante]: [Mensaje]
+```
+
+### Patrón de Expresión Regular Base
+
+```regex
+^(\d{1,2}/\d{1,2}/\d{2,4}),?\s+(\d{1,2}:\d{2})\s+-\s+([^:]+):\s*(.*)$
+```
+
+### Extracción de Datos
+
+#### 1. Extracción de Fechas
+
+**Formato:** `DD/MM/YY` o `DD/MM/YYYY`
+- Ejemplo: `21/10/25` → día 21, mes 10, año 2025
+- Ejemplo: `21/10/2025` → día 21, mes 10, año 2025
+
+**Parsing:**
+- Si el año tiene 2 dígitos (YY), añadir prefijo "20" → `20YY`
+- Si el año tiene 4 dígitos (YYYY), usar directamente
+- Separar por `/` para obtener día, mes, año
+- Convertir a objeto `DateTime` para cálculos temporales
+
+#### 2. Extracción de Hora
+
+**Formato:** `HH:MM` (24 horas)
+- Ejemplo: `8:21` → 8:21 AM
+- Ejemplo: `14:35` → 2:35 PM
+
+**Parsing:**
+- Separar por `:` para obtener horas y minutos
+- Combinar con fecha para crear `DateTime` completo
+
+#### 3. Extracción de Nombres de Participantes
+
+**Formato:** Todo el texto entre `-` y `:` es el nombre del participante
+- Ejemplo: `21/10/25, 8:21 - Pepe: Mensaje` → nombre: `Pepe`
+- Ejemplo: `21/10/25, 8:21 - David: Mensaje` → nombre: `David`
+
+**Reglas importantes:**
+- El nombre puede contener espacios: `Juan Pérez`
+- El nombre puede contener caracteres especiales y emojis
+- Trimear espacios al inicio y final del nombre
+- Si no hay `:` después del nombre, NO es un mensaje de usuario (ver excepciones)
+
+#### 4. Extracción del Contenido del Mensaje
+
+**Formato:** Todo el texto después de `: ` (dos puntos + espacio)
+- Ejemplo: `Pepe: Buenas David` → mensaje: `Buenas David`
+- El mensaje puede contener múltiples líneas si continúa en la siguiente línea sin fecha
+
+**Mensajes multilínea (CRÍTICO):**
+- **Regla fundamental:** Si una línea NO empieza con patrón de fecha (`DD/MM/YY`), entonces es continuación del mensaje anterior
+- Un mensaje puede extenderse por múltiples líneas, pero sigue siendo **UN SOLO MENSAJE**
+- Concatenar todas las líneas consecutivas sin fecha hasta encontrar una nueva línea que empiece con patrón de fecha
+- Preservar los saltos de línea (`\n`) al concatenar para mantener el formato original
+
+**Ejemplo de mensaje multilínea:**
+
+```
+10/11/25, 10:36 - David: Ruben Gomez Zapater/Carlos Quintilla Faro
+
+Ruben Gomez Zapater: rugoza83@gmail.com - 675263356
+
+Carlos Quintilla Faro: carlos.quintilla@gmail.com - 600906406
+
+Carlos Delgado Torres/Fernando Inglan Bielsa
+
+Carlos Delgado Torres: marcarelecar@gmail.com - 646965654
+
+Fernando Inglán Bielsa: inglan.llorente@hotmail.com - 636411716
+
+10/11/25, 10:36 - David: Los pongo aqui pa no tener que mirar el correo
+```
+
+**Parsing correcto:**
+- **Mensaje 1:** Todo desde `10/11/25, 10:36 - David: Ruben Gomez...` hasta justo antes de la siguiente fecha
+- **Mensaje 2:** `10/11/25, 10:36 - David: Los pongo aqui pa no tener que mirar el correo`
+- Total: **2 mensajes** (no contar cada línea como mensaje separado)
+
+**Algoritmo de detección:**
+```dart
+String currentMessage = '';
+DateTime? currentDate;
+String? currentParticipant;
+
+for (final line in lines) {
+  // Verificar si la línea empieza con patrón de fecha
+  if (messagePattern.hasMatch(line.trim())) {
+    // Guardar mensaje anterior si existe
+    if (currentMessage.isNotEmpty && currentParticipant != null) {
+      saveMessage(currentDate, currentParticipant, currentMessage);
+    }
+    // Iniciar nuevo mensaje
+    final match = messagePattern.firstMatch(line.trim());
+    currentDate = parseDate(match.group(1));
+    currentParticipant = match.group(3)?.trim();
+    currentMessage = match.group(4)?.trim() ?? '';
+  } else {
+    // Continuación del mensaje anterior
+    if (currentMessage.isNotEmpty) {
+      currentMessage += '\n' + line.trim();
+    }
+  }
+}
+// No olvidar guardar el último mensaje
+if (currentMessage.isNotEmpty && currentParticipant != null) {
+  saveMessage(currentDate, currentParticipant, currentMessage);
+}
+```
+
+### Excepciones y Casos Especiales
+
+#### 1. Mensajes del Sistema (IGNORAR)
+
+**Patrón:** Mensajes que empiezan con texto específico sin nombre de participante
+
+**Ejemplos a ignorar:**
+- `21/10/25, 8:21 - Los mensajes y las llamadas están cifrados de extremo a extremo...`
+- Cualquier mensaje que empiece con `Los mensajes y las llamadas` debe ser completamente ignorado
+- No contar como mensaje válido
+- No extraer participante
+
+**Detección:**
+```dart
+if (line.contains('Los mensajes y las llamadas')) {
+  // Ignorar completamente esta línea
+  continue;
+}
+```
+
+#### 2. Notificaciones de Contactos
+
+**Formato:** `DD/MM/YY, HH:MM - ‎[Nombre] es un contacto.`
+- Ejemplo: `21/10/25, 8:21 - ‎Pepe es un contacto.`
+- No tiene dos puntos después del nombre
+- Puede contener carácter invisible al inicio (‎)
+
+**Tratamiento:**
+- Opcional: Registrar como evento de sistema (contacto añadido)
+- No contar como mensaje de texto
+- Puede usarse para detectar fecha de inicio de chat
+
+#### 3. Detección de Contenido Multimedia
+
+**Indicadores comunes en mensajes:**
+- **Imágenes:** 
+  - Texto: `[Imagen omitida]`, `[imagen]`, `image omitted`
+  - Texto: `<Multimedia omitido>` → **SIEMPRE es una imagen**
+  - O simplemente ausencia de texto con patrón de fecha válido
+- **Videos:**
+  - Texto: `[Video omitido]`, `[video]`, `video omitted`
+- **Audios:**
+  - Texto: `[Audio]`, `[audio]`, `audio omitted`
+  - Puede incluir duración: `[Audio] (0:15)`
+- **Documentos:**
+  - Texto: `[Documento]`, `[document]`, nombre de archivo
+- **Ubicaciones:**
+  - Texto: `[Ubicación]`, `[location]`
+- **Contactos:**
+  - Texto: `[Contacto]`, `[contact]`
+- **Stickers:**
+  - Texto: `[Sticker]`, `[sticker]`
+- **GIFs:**
+  - Texto: `[GIF]`, `[gif]`
+
+**Detección:**
+```dart
+bool isMediaMessage(String message) {
+  final mediaPatterns = [
+    r'\[.*imagen.*\]',
+    r'<Multimedia omitido>',  // Patrón específico para imágenes
+    r'\[.*video.*\]',
+    r'\[.*audio.*\]',
+    r'\[.*documento.*\]',
+    r'\[.*ubicación.*\]',
+    r'\[.*contacto.*\]',
+    r'\[.*sticker.*\]',
+    r'\[.*gif.*\]',
+  ];
+  
+  final lowerMessage = message.toLowerCase();
+  return mediaPatterns.any((pattern) => 
+    RegExp(pattern, caseSensitive: false).hasMatch(lowerMessage)
+  );
+}
+
+// Función específica para detectar imágenes
+bool isImageMessage(String message) {
+  final imagePatterns = [
+    r'\[.*imagen.*\]',
+    r'<Multimedia omitido>',  // Patrón específico: SIEMPRE es imagen
+    r'image omitted',
+  ];
+  
+  final lowerMessage = message.toLowerCase();
+  return imagePatterns.any((pattern) => 
+    RegExp(pattern, caseSensitive: false).hasMatch(lowerMessage)
+  );
+}
+```
+
+#### 4. Mensajes Eliminados
+
+**Formato:** `DD/MM/YY, HH:MM - [Participante]: Este mensaje fue eliminado`
+- Variaciones: `Este mensaje fue eliminado`, `This message was deleted`
+- Contar como mensaje pero marcar como eliminado
+
+#### 5. Mensajes Editados
+
+**Formato:** `DD/MM/YY, HH:MM - [Participante]: Mensaje (editado)`
+- Buscar indicador `(editado)` o `(edited)` al final
+- Contar como mensaje normal pero marcar como editado
+
+### Reglas de Parsing
+
+1. **Primera línea del archivo:**
+   - SIEMPRE verificar si empieza con `Los mensajes y las llamadas`
+   - Si es así, ignorar completamente
+
+2. **Líneas vacías:**
+   - Ignorar líneas completamente vacías
+   - No afectan el conteo de mensajes
+
+3. **Líneas sin patrón de fecha (CRÍTICO - Mensajes multilínea):**
+   - **IMPORTANTE:** Si una línea NO empieza con patrón `DD/MM/YY`, entonces es continuación del mensaje anterior
+   - Estas líneas forman parte del mismo mensaje, NO son mensajes separados
+   - Concatenar todas las líneas consecutivas sin fecha al último mensaje procesado
+   - Preservar saltos de línea (`\n`) al concatenar
+   - **Un mensaje puede tener múltiples líneas pero cuenta como 1 solo mensaje**
+
+4. **Validación de mensajes:**
+   - Un mensaje válido DEBE tener:
+     - Fecha válida (patrón DD/MM/YY)
+     - Hora válida (patrón HH:MM)
+     - Separador ` - `
+     - Nombre de participante (texto antes de `:`)
+     - Contenido (texto después de `: `)
+
+5. **Normalización de nombres:**
+   - Eliminar espacios al inicio y final
+   - Eliminar caracteres invisibles (como ‎)
+   - Mantener mayúsculas/minúsculas originales para identificación
+
+### Ejemplo de Parsing Completo
+
+**Ejemplo 1 - Mensajes simples:**
+
+```
+Entrada:
+21/10/25, 8:21 - Los mensajes y las llamadas están cifrados... [IGNORAR]
+21/10/25, 8:21 - ‎Pepe es un contacto. [EVENTO DE SISTEMA]
+21/10/25, 8:21 - Pepe: Buenas David [MENSAJE VÁLIDO]
+21/10/25, 8:21 - Pepe: [Imagen omitida] [MENSAJE MULTIMEDIA]
+21/10/25, 8:23 - David: Hola David!! [MENSAJE VÁLIDO]
+```
+
+**Resultado esperado:**
+- Total mensajes válidos: 3 (2 texto, 1 multimedia)
+- Participantes: ["Pepe", "David"]
+- Primer mensaje: 21/10/25 8:21 (Pepe)
+- Último mensaje: 21/10/25 8:23 (David)
+
+**Ejemplo 2 - Mensaje multilínea:**
+
+```
+Entrada:
+10/11/25, 10:36 - David: Ruben Gomez Zapater/Carlos Quintilla Faro
+
+Ruben Gomez Zapater: rugoza83@gmail.com - 675263356
+
+Carlos Quintilla Faro: carlos.quintilla@gmail.com - 600906406
+
+Carlos Delgado Torres/Fernando Inglan Bielsa
+
+Carlos Delgado Torres: marcarelecar@gmail.com - 646965654
+
+Fernando Inglán Bielsa: inglan.llorente@hotmail.com - 636411716
+
+10/11/25, 10:36 - David: Los pongo aqui pa no tener que mirar el correo
+```
+
+**Resultado esperado:**
+- Total mensajes válidos: **2** (NO 8, porque las líneas sin fecha son parte del primer mensaje)
+- Mensaje 1: Contenido completo desde "Ruben Gomez Zapater..." hasta "636411716" (todo es 1 mensaje)
+- Mensaje 2: "Los pongo aqui pa no tener que mirar el correo"
+- Participantes: ["David"]
+
 ## Notas Importantes
 
-<!-- Agrega notas importantes sobre el proyecto aquí -->
+- El procesamiento debe ser robusto ante variaciones en el formato
+- Manejar errores de parsing de fecha/hora sin detener el procesamiento completo
+- Considerar diferentes idiomas para mensajes del sistema (español/inglés principalmente)
+- El formato puede variar ligeramente según la versión de WhatsApp y el idioma del dispositivo
 
 

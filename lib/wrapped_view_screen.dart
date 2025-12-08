@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'models/wrapped_model.dart';
+import 'whatsapp_processor.dart';
+import 'screens/wrapped/wrapped_first_screen.dart';
+import 'screens/wrapped/wrapped_second_screen.dart';
+import 'screens/wrapped/wrapped_placeholder_screen.dart';
 
 class WrappedViewScreen extends StatefulWidget {
   final WrappedModel wrapped;
@@ -21,14 +24,21 @@ class _WrappedViewScreenState extends State<WrappedViewScreen>
   late Animation<double> _progressAnimation;
   late Animation<double> _fadeAnimation;
   
+  WhatsAppData? _data;
   int _currentScreen = 0;
   double _progress = 0.0;
   bool _isPaused = false; // Flag para pausar animación
   static const int _totalScreens = 9;
+  
+  // Referencia a la primera pantalla para controlar animaciones
+  final GlobalKey<WrappedFirstScreenState> _firstScreenKey = GlobalKey<WrappedFirstScreenState>();
 
   @override
   void initState() {
     super.initState();
+    
+    // Reconstruir WhatsAppData desde el JSON guardado
+    _data = WhatsAppData.fromJson(widget.wrapped.data);
     
     // Controlador para la barra de progreso
     _progressController = AnimationController(
@@ -62,15 +72,19 @@ class _WrappedViewScreenState extends State<WrappedViewScreen>
       });
     });
     
+    print('Iniciando animación...');
     _startAnimation();
   }
 
   void _startAnimation() {
+    print('_startAnimation() llamado');
     _fadeController.forward();
     _progressController.forward().then((_) {
+      print('Animación de progreso completada (10 segundos)');
       // Después de 10 segundos, pasar a la siguiente pantalla
       if (_currentScreen < _totalScreens - 1) {
         _fadeController.reverse().then((_) {
+          print('Fade out completado, cambiando a pantalla ${_currentScreen + 1}');
           setState(() {
             _currentScreen++;
             _progress = 0.0;
@@ -79,22 +93,53 @@ class _WrappedViewScreenState extends State<WrappedViewScreen>
           _progressController.reset();
           _fadeController.forward();
           _progressController.forward();
+          
+          // Reiniciar animaciones si volvemos a la primera pantalla
+          if (_currentScreen == 0) {
+            _firstScreenKey.currentState?.resetAnimations();
+          }
+        }).catchError((error) {
+          print('Error en fade reverse: $error');
         });
       }
+    }).catchError((error) {
+      print('Error en progress animation: $error');
     });
   }
 
   void _pauseAnimation() {
     if (!_isPaused && _progressController.isAnimating) {
-      _isPaused = true;
+      setState(() {
+        _isPaused = true;
+      });
       _progressController.stop(canceled: false);
+      
+      // Pausar animaciones de la primera pantalla si estamos en ella
+      if (_currentScreen == 0) {
+        _firstScreenKey.currentState?.pauseAnimations();
+      }
     }
   }
 
   void _resumeAnimation() {
     if (_isPaused) {
-      _isPaused = false;
+      setState(() {
+        _isPaused = false;
+      });
       _progressController.forward();
+      
+      // Reanudar animaciones de la primera pantalla si estamos en ella
+      if (_currentScreen == 0) {
+        _firstScreenKey.currentState?.resumeAnimations();
+      }
+    }
+  }
+
+  void _togglePlayPause() {
+    if (_isPaused) {
+      _resumeAnimation();
+    } else {
+      _pauseAnimation();
     }
   }
 
@@ -109,6 +154,11 @@ class _WrappedViewScreenState extends State<WrappedViewScreen>
         _progressController.reset();
         _fadeController.forward();
         _progressController.forward();
+        
+        // Reiniciar animaciones si volvemos a la primera pantalla
+        if (_currentScreen == 0) {
+          _firstScreenKey.currentState?.resetAnimations();
+        }
       });
     }
   }
@@ -124,6 +174,11 @@ class _WrappedViewScreenState extends State<WrappedViewScreen>
         _progressController.reset();
         _fadeController.forward();
         _progressController.forward();
+        
+        // Reiniciar animaciones si volvemos a la primera pantalla
+        if (_currentScreen == 0) {
+          _firstScreenKey.currentState?.resetAnimations();
+        }
       });
     }
   }
@@ -150,6 +205,12 @@ class _WrappedViewScreenState extends State<WrappedViewScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (_data == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       body: GestureDetector(
         onTapDown: _handleTap,
@@ -218,18 +279,38 @@ class _WrappedViewScreenState extends State<WrappedViewScreen>
                 opacity: _fadeAnimation,
                 child: _buildScreen(),
               ),
-              // Botón X en la esquina superior derecha
+              // Botones de control en la esquina superior derecha
               Positioned(
                 top: MediaQuery.of(context).padding.top + (_totalScreens * 4) + ((_totalScreens - 1) * 2) + 16,
                 right: 16,
-                child: IconButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  icon: const Icon(
-                    Icons.close,
-                    color: Colors.white,
-                    size: 28,
+                child: GestureDetector(
+                  onTap: () {}, // Absorber taps para evitar que lleguen al GestureDetector principal
+                  behavior: HitTestBehavior.opaque,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Botón play/pause
+                      IconButton(
+                        onPressed: _togglePlayPause,
+                        icon: Icon(
+                          _isPaused ? Icons.play_arrow : Icons.pause,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Botón X
+                      IconButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        icon: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -241,132 +322,24 @@ class _WrappedViewScreenState extends State<WrappedViewScreen>
   }
 
   Widget _buildScreen() {
-    // Por ahora, mostrar las primeras 2 pantallas como antes
-    // Más adelante se pueden agregar las otras 7
     if (_currentScreen == 0) {
-      return _buildFirstScreen();
+      return WrappedFirstScreen(
+        key: _firstScreenKey,
+        data: _data!,
+        totalScreens: _totalScreens,
+      );
     } else if (_currentScreen == 1) {
-      return _buildSecondScreen();
+      return WrappedSecondScreen(
+        data: _data!,
+        totalScreens: _totalScreens,
+      );
     } else {
       // Pantallas adicionales (2-8) - por ahora mostrar placeholder
-      return _buildPlaceholderScreen();
+      return WrappedPlaceholderScreen(
+        screenNumber: _currentScreen,
+        totalScreens: _totalScreens,
+      );
     }
-  }
-
-  Widget _buildFirstScreen() {
-    return SizedBox(
-      width: double.infinity,
-      height: double.infinity,
-      child: Padding(
-        padding: EdgeInsets.only(
-          top: MediaQuery.of(context).padding.top + (_totalScreens * 4) + ((_totalScreens - 1) * 2) + 60,
-          bottom: MediaQuery.of(context).padding.bottom + 32,
-          left: 32,
-          right: 32,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Spacer(),
-            Text(
-              '${widget.wrapped.totalLines}',
-              style: GoogleFonts.inter(
-                fontSize: 80,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'líneas',
-              style: GoogleFonts.poppins(
-                fontSize: 32,
-                fontWeight: FontWeight.w500,
-                color: Colors.white.withOpacity(0.9),
-              ),
-            ),
-            const Spacer(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSecondScreen() {
-    return SizedBox(
-      width: double.infinity,
-      height: double.infinity,
-      child: Padding(
-        padding: EdgeInsets.only(
-          top: MediaQuery.of(context).padding.top + (_totalScreens * 4) + ((_totalScreens - 1) * 2) + 60,
-          bottom: MediaQuery.of(context).padding.bottom + 32,
-          left: 32,
-          right: 32,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Spacer(),
-            Text(
-              'Participantes',
-              style: GoogleFonts.inter(
-                fontSize: 32,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 32),
-            ...widget.wrapped.participants.map((participant) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
-                child: Text(
-                  participant,
-                  style: GoogleFonts.poppins(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white.withOpacity(0.9),
-                  ),
-                ),
-              );
-            }),
-            const Spacer(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPlaceholderScreen() {
-    return SizedBox(
-      width: double.infinity,
-      height: double.infinity,
-      child: Padding(
-        padding: EdgeInsets.only(
-          top: MediaQuery.of(context).padding.top + (_totalScreens * 4) + ((_totalScreens - 1) * 2) + 60,
-          bottom: MediaQuery.of(context).padding.bottom + 32,
-          left: 32,
-          right: 32,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Spacer(),
-            Text(
-              'Pantalla ${_currentScreen + 1}',
-              style: GoogleFonts.inter(
-                fontSize: 32,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-            const Spacer(),
-          ],
-        ),
-      ),
-    );
   }
 }
 
