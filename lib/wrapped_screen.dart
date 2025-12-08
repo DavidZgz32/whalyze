@@ -27,26 +27,27 @@ class _WrappedScreenState extends State<WrappedScreen>
   late AnimationController _fadeController;
   late Animation<double> _progressAnimation;
   late Animation<double> _fadeAnimation;
-  
+
   WhatsAppData? _data;
   int _currentScreen = 0;
   double _progress = 0.0;
   bool _hasBeenSaved = false; // Flag para evitar guardar múltiples veces
   bool _isPaused = false; // Flag para pausar animación
   static const int _totalScreens = 9;
-  
+
   // Referencia a la primera pantalla para controlar animaciones
-  final GlobalKey<WrappedFirstScreenState> _firstScreenKey = GlobalKey<WrappedFirstScreenState>();
+  final GlobalKey<WrappedFirstScreenState> _firstScreenKey =
+      GlobalKey<WrappedFirstScreenState>();
 
   @override
   void initState() {
     super.initState();
-    
+
     print('WrappedScreen initState - procesando archivo...');
     // Procesar el archivo
     _data = WhatsAppProcessor.processFile(widget.fileContent);
-    print('Archivo procesado - totalLines: ${_data?.totalLines}, participants: ${_data?.participants.length}');
-    
+    print('Archivo procesado - participants: ${_data?.participants.length}');
+
     // Guardar inmediatamente después de procesar (backup)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       print('PostFrameCallback - guardando wrapped inmediatamente...');
@@ -57,39 +58,39 @@ class _WrappedScreenState extends State<WrappedScreen>
         }
       });
     });
-    
+
     // Controlador para la barra de progreso
     _progressController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 10),
+      duration: const Duration(seconds: 18),
     );
-    
+
     _progressAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _progressController,
         curve: Curves.linear,
       ),
     );
-    
+
     // Controlador para fade in/out
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
-    
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _fadeController,
         curve: Curves.easeInOut,
       ),
     );
-    
+
     _progressController.addListener(() {
       setState(() {
         _progress = _progressAnimation.value;
       });
     });
-    
+
     print('Iniciando animación...');
     _startAnimation();
   }
@@ -102,7 +103,8 @@ class _WrappedScreenState extends State<WrappedScreen>
       // Después de 10 segundos, pasar a la siguiente pantalla
       if (_currentScreen < _totalScreens - 1) {
         _fadeController.reverse().then((_) {
-          print('Fade out completado, cambiando a pantalla ${_currentScreen + 1}');
+          print(
+              'Fade out completado, cambiando a pantalla ${_currentScreen + 1}');
           setState(() {
             _currentScreen++;
             _progress = 0.0;
@@ -111,7 +113,7 @@ class _WrappedScreenState extends State<WrappedScreen>
           _progressController.reset();
           _fadeController.forward();
           _progressController.forward();
-          
+
           // Reiniciar animaciones si volvemos a la primera pantalla
           if (_currentScreen == 0) {
             _firstScreenKey.currentState?.resetAnimations();
@@ -135,7 +137,7 @@ class _WrappedScreenState extends State<WrappedScreen>
         _isPaused = true;
       });
       _progressController.stop(canceled: false);
-      
+
       // Pausar animaciones de la primera pantalla si estamos en ella
       if (_currentScreen == 0) {
         _firstScreenKey.currentState?.pauseAnimations();
@@ -149,7 +151,7 @@ class _WrappedScreenState extends State<WrappedScreen>
         _isPaused = false;
       });
       _progressController.forward();
-      
+
       // Reanudar animaciones de la primera pantalla si estamos en ella
       if (_currentScreen == 0) {
         _firstScreenKey.currentState?.resumeAnimations();
@@ -176,7 +178,7 @@ class _WrappedScreenState extends State<WrappedScreen>
         _progressController.reset();
         _fadeController.forward();
         _progressController.forward();
-        
+
         // Reiniciar animaciones si volvemos a la primera pantalla
         if (_currentScreen == 0) {
           _firstScreenKey.currentState?.resetAnimations();
@@ -196,7 +198,7 @@ class _WrappedScreenState extends State<WrappedScreen>
         _progressController.reset();
         _fadeController.forward();
         _progressController.forward();
-        
+
         // Reiniciar animaciones si volvemos a la primera pantalla
         if (_currentScreen == 0) {
           _firstScreenKey.currentState?.resetAnimations();
@@ -204,12 +206,11 @@ class _WrappedScreenState extends State<WrappedScreen>
       });
     }
   }
-  
 
   void _handleTap(TapDownDetails details) {
     final screenWidth = MediaQuery.of(context).size.width;
     final tapX = details.globalPosition.dx;
-    
+
     // Si el tap es en la mitad derecha de la pantalla, avanzar
     if (tapX > screenWidth / 2) {
       _goToNextScreen();
@@ -225,53 +226,57 @@ class _WrappedScreenState extends State<WrappedScreen>
       print('_saveWrapped() ya fue llamado anteriormente, saltando...');
       return;
     }
-    
+
     print('_saveWrapped() llamado');
     if (_data == null) {
       print('Error: _data is null, cannot save wrapped');
       return;
     }
-    
-    print('_data no es null, totalLines: ${_data!.totalLines}, participants: ${_data!.participants.length}');
-    
+
+    print('_data no es null, participants: ${_data!.participants.length}');
+
     try {
       // Marcar como guardado antes de empezar para evitar duplicados
       _hasBeenSaved = true;
-      
+
       // Generar ID único con formato wrapped_<timestamp>
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final wrappedId = 'wrapped_$timestamp';
-      
+
       // Obtener el JSON completo con todas las métricas
       final jsonData = _data!.toJson();
-      
+
       print('JSON generado con ${jsonData.keys.length} keys');
       print('Primeros keys del JSON: ${jsonData.keys.take(5).toList()}');
-      
+
+      // Calcular totalLines desde el contenido del archivo
+      final totalLines = widget.fileContent.split('\n').length;
+
       final wrapped = WrappedModel(
         id: wrappedId,
         title: 'WHALYZE ${DateTime.now().year}',
         createdAt: DateTime.now(),
         data: jsonData, // JSON completo con todas las métricas
         participants: _data!.participants,
-        totalLines: _data!.totalLines,
+        totalLines: totalLines,
       );
-      
+
       print('WrappedModel creado: ${wrapped.id}, título: ${wrapped.title}');
       print('Intentando guardar en WrappedStorage...');
-      
+
       await WrappedStorage.saveWrapped(wrapped);
       print('Wrapped guardado exitosamente: ${wrapped.id}');
-      
+
       // Verificar que se guardó inmediatamente
       await Future.delayed(const Duration(milliseconds: 100));
       final allWrappeds = WrappedStorage.getAllWrappeds();
-      print('Total wrappeds guardados después de guardar: ${allWrappeds.length}');
-      
+      print(
+          'Total wrappeds guardados después de guardar: ${allWrappeds.length}');
+
       if (allWrappeds.isEmpty) {
         print('ERROR CRÍTICO: El wrapped no aparece después de guardar');
       }
-      
+
       // Wrapped guardado silenciosamente sin mostrar aviso
     } catch (e, stackTrace) {
       print('Error al guardar wrapped: $e');
@@ -337,7 +342,9 @@ class _WrappedScreenState extends State<WrappedScreen>
                 left: 0,
                 right: 0,
                 child: Container(
-                  height: MediaQuery.of(context).padding.top + (_totalScreens * 4) + ((_totalScreens - 1) * 2),
+                  height: MediaQuery.of(context).padding.top +
+                      (_totalScreens * 4) +
+                      ((_totalScreens - 1) * 2),
                   padding: EdgeInsets.only(
                     top: MediaQuery.of(context).padding.top + 2,
                     left: 2,
@@ -383,10 +390,14 @@ class _WrappedScreenState extends State<WrappedScreen>
               ),
               // Botones de control en la esquina superior derecha
               Positioned(
-                top: MediaQuery.of(context).padding.top + (_totalScreens * 4) + ((_totalScreens - 1) * 2) + 16,
+                top: MediaQuery.of(context).padding.top +
+                    (_totalScreens * 4) +
+                    ((_totalScreens - 1) * 2) +
+                    4,
                 right: 16,
                 child: GestureDetector(
-                  onTap: () {}, // Absorber taps para evitar que lleguen al GestureDetector principal
+                  onTap:
+                      () {}, // Absorber taps para evitar que lleguen al GestureDetector principal
                   behavior: HitTestBehavior.opaque,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -404,7 +415,8 @@ class _WrappedScreenState extends State<WrappedScreen>
                       // Botón X
                       IconButton(
                         onPressed: () {
-                          Navigator.of(context).popUntil((route) => route.isFirst);
+                          Navigator.of(context)
+                              .popUntil((route) => route.isFirst);
                         },
                         icon: const Icon(
                           Icons.close,
@@ -444,4 +456,3 @@ class _WrappedScreenState extends State<WrappedScreen>
     }
   }
 }
-

@@ -683,16 +683,16 @@ class _ExpansionItemState extends State<_ExpansionItem>
                     ),
                   ),
                   const SizedBox(height: 24),
-                  // Botón Ver ejemplos
+                  // Botón Ver más
                   TextButton(
                     onPressed: () {},
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                     ),
                     child: Text(
-                      'Ver ejemplos',
+                      'Ver más',
                       style: GoogleFonts.poppins(
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.normal,
                         color: Colors.black87,
                         decoration: TextDecoration.underline,
