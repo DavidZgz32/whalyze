@@ -1,0 +1,120 @@
+# Reglas de Cursor para Whalyze
+
+## Descripción de la App
+
+Whalyze es una aplicación móvil desarrollada en Flutter, diseñada para analizar chats exportados de WhatsApp (.txt).
+El procesamiento del archivo se realiza 100% en local para garantizar privacidad y rapidez.
+
+La app permite al usuario elegir entre tres modos de análisis:
+
+Wrapped → estadísticas visuales, pantallas animadas, resúmenes estilo "Spotify Wrapped".
+
+Red Flags → análisis de comportamientos tóxicos, patrones, señales de alerta.
+
+Roast Me → análisis humorístico basado en el tono de la conversación.
+
+Funciones clave:
+
+Abrir archivos desde WhatsApp mediante ACTION_VIEW o ACTION_SEND.
+
+Mostrar popup al importar archivo con selección de modo (Wrapped / Red Flags / Roast).
+
+Procesar miles de mensajes localmente.
+
+Enviar JSON a la API solo si el usuario quiere compartir su Wrapped online.
+
+Mostrar animaciones fluidas entre pantallas (tap-to-continue).
+
+Monetización con anuncios + compras in-app.
+
+📊 Datos clave que se miden en un Wrapped de WhatsApp (resumen)
+1. Actividad general del chat
+
+Total de mensajes por persona
+
+Diferencia porcentual entre participantes
+
+Día más activo
+
+Mes más activo
+
+Primer mensaje y fecha de inicio
+
+2. Frecuencia y patrones de conversación
+
+Quién inicia más conversaciones
+
+Quién responde más rápido
+
+Rachas de mensajes
+
+Días consecutivos escribiendo
+
+Horas del día con más actividad
+
+Días de la semana más activos
+
+3. Contenido emocional / expresivo
+
+Emojis más usados por cada persona
+
+Interpretación del estilo emocional según emojis
+
+Palabras más usadas (por longitud o por frecuencia)
+
+4. Hitos y curiosidades
+
+Palabras únicas totales
+
+Preguntas realizadas
+
+Mensajes eliminados y editados
+
+Racha más intensa (explosiones de mensajes)
+
+Dato curioso global (ej.: órbitas, nacimientos, distancias, etc.)
+
+5. Contenido multimedia
+
+Total de fotos, vídeos, audios, GIFs y stickers
+
+Fotos temporales
+
+Ubicaciones compartidas
+
+Contactos enviados
+
+6. Comparaciones de comportamiento
+
+Quién mueve más el chat
+
+Quién responde antes
+
+Quién genera más picos de conversación
+
+Quién tiene más mensajes largos/cortos
+
+7. Palabras y lenguaje
+
+Palabras más repetidas
+
+Palabras destacadas por longitud
+
+Frases o patrones recurrentes
+
+
+## Estructura del Proyecto
+
+<!-- Documenta la estructura del proyecto aquí -->
+
+
+## Convenciones de Código
+
+<!-- Define las convenciones de código que se deben seguir -->
+
+
+## Notas Importantes
+
+<!-- Agrega notas importantes sobre el proyecto aquí -->
+
+

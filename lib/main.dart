@@ -4,8 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:heroicons/heroicons.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'wrapped_screen.dart';
+import 'services/wrapped_storage.dart';
+import 'favorites_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await WrappedStorage.init();
   runApp(const MyApp());
 }
 
@@ -20,6 +26,14 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
         scaffoldBackgroundColor: Colors.white,
+        textTheme: GoogleFonts.poppinsTextTheme(),
+        appBarTheme: AppBarTheme(
+          titleTextStyle: GoogleFonts.inter(
+            fontSize: 24,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
       ),
       home: const HomeScreen(),
     );
@@ -58,7 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   final List<String> _costs = [
-    'Coste: Gratuito',
+    'Gratuito',
     'Coste: 1,99€',
     'Coste: 1,99€',
   ];
@@ -94,6 +108,143 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _showFileOptionsDialog(BuildContext context, int lineCount,
+      String fileContent, String filePath) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Elige una opción',
+                  style: GoogleFonts.inter(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Botón WHALYZE
+                _buildServiceButton(
+                  context: context,
+                  title: 'WHALYZE',
+                  gradientColors: _gradientColors[0],
+                  cost: 'Gratuito',
+                  lineCount: lineCount,
+                  fileContent: fileContent,
+                  filePath: filePath,
+                ),
+                const SizedBox(height: 16),
+                // Botón DETECTAR RED FLAGS
+                _buildServiceButton(
+                  context: context,
+                  title: 'DETECTAR RED FLAGS',
+                  gradientColors: _gradientColors[1],
+                  cost: '1,99€',
+                  lineCount: lineCount,
+                  fileContent: fileContent,
+                  filePath: filePath,
+                ),
+                const SizedBox(height: 16),
+                // Botón ROAST ME
+                _buildServiceButton(
+                  context: context,
+                  title: 'ROAST ME',
+                  gradientColors: _gradientColors[2],
+                  cost: '1,99€',
+                  lineCount: lineCount,
+                  fileContent: fileContent,
+                  filePath: filePath,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildServiceButton({
+    required BuildContext context,
+    required String title,
+    required List<Color> gradientColors,
+    required String cost,
+    required int lineCount,
+    required String fileContent,
+    required String filePath,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).pop();
+        if (title == 'WHALYZE') {
+          // Navegar a pantallas Wrapped
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => WrappedScreen(
+                filePath: filePath,
+                fileContent: fileContent,
+              ),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '$lineCount líneas abierto con $title',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              backgroundColor: gradientColors[0],
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: gradientColors,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+        child: Column(
+          children: [
+            Text(
+              title,
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              cost,
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _processFile(String filePath) async {
     try {
       String content;
@@ -119,44 +270,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final lineCount = content.split('\n').length;
 
       if (mounted) {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              title: const Text(
-                'Archivo procesado',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              content: Text(
-                '$lineCount líneas',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text(
-                    'Cerrar',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
+        _showFileOptionsDialog(context, lineCount, content, filePath);
       }
     } catch (e) {
       if (mounted) {
@@ -173,22 +287,33 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF0F4F8),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFE8F2FF),
         elevation: 0,
         leading: Padding(
           padding: const EdgeInsets.all(8.0),
-          child: HeroIcon(
-            HeroIcons.heart,
-            style: HeroIconStyle.outline,
-            color: Colors.black87,
-            size: 24,
+          child: GestureDetector(
+            onTap: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const FavoritesScreen(),
+                ),
+              );
+              // Recargar cuando vuelvas de favoritos
+              setState(() {});
+            },
+            child: HeroIcon(
+              HeroIcons.heart,
+              style: HeroIconStyle.outline,
+              color: Colors.black87,
+              size: 24,
+            ),
           ),
         ),
-        title: const Text(
-          'Whalyze',
-          style: TextStyle(
+        title: Text(
+          'WHALYZE',
+          style: GoogleFonts.inter(
             color: Colors.black87,
             fontSize: 24,
             fontWeight: FontWeight.w600,
@@ -309,9 +434,9 @@ class _ExpansionItemState extends State<_ExpansionItem>
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Text(
+          title: Text(
             '¿Cómo exportar un chat?',
-            style: TextStyle(
+            style: GoogleFonts.inter(
               fontSize: 20,
               fontWeight: FontWeight.w600,
             ),
@@ -320,17 +445,17 @@ class _ExpansionItemState extends State<_ExpansionItem>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 've a whatsapp -> la conversación que quieras -> exportar -> abrir con Whalyze',
-                style: TextStyle(
+                style: GoogleFonts.poppins(
                   fontSize: 16,
                   height: 1.5,
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'o también puedes seleccionar el archivo desde aquí:',
-                style: TextStyle(
+                style: GoogleFonts.poppins(
                   fontSize: 16,
                   height: 1.5,
                 ),
@@ -348,16 +473,45 @@ class _ExpansionItemState extends State<_ExpansionItem>
                       );
 
                       if (result != null && result.files.single.path != null) {
-                        // Archivo seleccionado
+                        final filePath = result.files.single.path!;
                         Navigator.of(context).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Archivo seleccionado: ${result.files.single.name}',
+
+                        // Leer el contenido del archivo
+                        try {
+                          final file = File(filePath);
+                          if (await file.exists()) {
+                            final content = await file.readAsString();
+                            // Navegar a pantallas Wrapped
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => WrappedScreen(
+                                  filePath: filePath,
+                                  fileContent: content,
+                                ),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'El archivo no existe',
+                                  style: GoogleFonts.poppins(),
+                                ),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Error al leer el archivo: $e',
+                                style: GoogleFonts.poppins(),
+                              ),
+                              backgroundColor: Colors.red,
                             ),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
+                          );
+                        }
                       }
                     } catch (e) {
                       // Manejo de errores del plugin
@@ -366,6 +520,7 @@ class _ExpansionItemState extends State<_ExpansionItem>
                         SnackBar(
                           content: Text(
                             'Error al seleccionar archivo. Por favor, reinicia la app completamente.',
+                            style: GoogleFonts.poppins(),
                           ),
                           backgroundColor: Colors.red,
                           duration: const Duration(seconds: 4),
@@ -381,9 +536,9 @@ class _ExpansionItemState extends State<_ExpansionItem>
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Seleccionar archivo',
-                    style: TextStyle(
+                    style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -397,9 +552,9 @@ class _ExpansionItemState extends State<_ExpansionItem>
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: const Text(
+              child: Text(
                 'Cerrar',
-                style: TextStyle(
+                style: GoogleFonts.poppins(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
@@ -439,15 +594,49 @@ class _ExpansionItemState extends State<_ExpansionItem>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Text(
-                    widget.title,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: widget.isExpanded
-                          ? FontWeight.w600
-                          : FontWeight.normal,
-                    ),
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          widget.title,
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: widget.isExpanded
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                      if (widget.title == 'Detectar red flags' ||
+                          widget.title == 'Roast me')
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8.0),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  const Color(0xFF6366F1),
+                                  const Color(0xFF8B5CF6),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'IA',
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
                 AnimatedRotation(
@@ -482,11 +671,12 @@ class _ExpansionItemState extends State<_ExpansionItem>
             child: Padding(
               padding: const EdgeInsets.all(24.0),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
                     widget.description,
-                    style: const TextStyle(
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
                       color: Colors.black,
                       fontSize: 20,
                       height: 1.5,
@@ -494,22 +684,19 @@ class _ExpansionItemState extends State<_ExpansionItem>
                   ),
                   const SizedBox(height: 24),
                   // Botón Ver ejemplos
-                  ElevatedButton(
+                  TextButton(
                     onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey[300],
-                      foregroundColor: Colors.black87,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 2,
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Ver ejemplos',
-                      style: TextStyle(
+                      style: GoogleFonts.poppins(
                         fontSize: 20,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.normal,
+                        color: Colors.black87,
+                        decoration: TextDecoration.underline,
+                        decorationThickness: 2,
                       ),
                     ),
                   ),
@@ -522,7 +709,8 @@ class _ExpansionItemState extends State<_ExpansionItem>
                     style: ElevatedButton.styleFrom(
                       backgroundColor: widget.gradientColors[0],
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 20, horizontal: 24),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -530,7 +718,7 @@ class _ExpansionItemState extends State<_ExpansionItem>
                     ),
                     child: Text(
                       widget.buttonText,
-                      style: const TextStyle(
+                      style: GoogleFonts.poppins(
                         fontSize: 20,
                         fontWeight: FontWeight.w600,
                       ),
@@ -541,7 +729,7 @@ class _ExpansionItemState extends State<_ExpansionItem>
                   Text(
                     widget.cost,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: GoogleFonts.poppins(
                       color: widget.title == 'Whalyze'
                           ? const Color(0xFF9D4EDD)
                           : Colors.black87,
