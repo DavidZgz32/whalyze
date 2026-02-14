@@ -12,10 +12,11 @@ dependencies:
   heroicons: ^0.11.0
   file_picker: ^8.0.0+1
   receive_sharing_intent: ^1.8.1
-  google_fonts: ^6.1.0
+  google_fonts: ^7.0.0
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   fl_chart: ^0.68.0
+  shared_preferences: ^2.2.2
 
 dev_dependencies:
   flutter_test:
@@ -26,4 +27,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/
 

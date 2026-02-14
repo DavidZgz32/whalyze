@@ -6,7 +6,8 @@
     <application
         android:label="wra5"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:extractNativeLibs="true">
 
         <activity
             android:name=".MainActivity"
@@ -58,6 +59,11 @@
             </intent-filter>
 
         </activity>
+
+        <!-- Desactiva Impeller en emuladores Android (evita crash "Width is zero" / Lost connection) -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false" />
 
         <!-- Necesario para que Flutter detecte procesado de texto -->
         <meta-data

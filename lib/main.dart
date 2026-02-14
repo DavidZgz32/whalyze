@@ -8,6 +8,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'wrapped_screen.dart';
 import 'services/wrapped_storage.dart';
 import 'favorites_screen.dart';
+import 'onboarding_preferences.dart';
+import 'onboarding_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,8 +37,52 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const HomeScreen(),
+      home: const AppStart(),
     );
+  }
+}
+
+/// Decide si mostrar onboarding o pantalla principal al arrancar.
+class AppStart extends StatefulWidget {
+  const AppStart({super.key});
+
+  @override
+  State<AppStart> createState() => _AppStartState();
+}
+
+class _AppStartState extends State<AppStart> {
+  bool? _onboardingDone;
+
+  @override
+  void initState() {
+    super.initState();
+    OnboardingPreferences.hasCompletedOnboarding().then((done) {
+      if (mounted) setState(() => _onboardingDone = done);
+    });
+  }
+
+  void _goToHome() {
+    if (!mounted) return;
+    setState(() => _onboardingDone = true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_onboardingDone == null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFE8F2FF),
+        body: Center(
+          child: CircularProgressIndicator(
+            color: const Color(0xFF00C980),
+            strokeWidth: 2,
+          ),
+        ),
+      );
+    }
+    if (_onboardingDone!) {
+      return const HomeScreen();
+    }
+    return OnboardingScreen(onFinish: _goToHome);
   }
 }
 
@@ -50,6 +96,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0; // Whalyze expandido por defecto
   static const MethodChannel _channel = MethodChannel('com.example.wra5/file');
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   final List<String> _titles = ['Whalyze', 'Detectar red flags', 'Roast me'];
 
@@ -287,7 +334,55 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: const Color(0xFFF0F4F8),
+      drawer: Drawer(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
+                child: Text(
+                  'Whalyze',
+                  style: GoogleFonts.poppins(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.home_outlined),
+                title: Text(
+                  'Volver a bienvenida',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.of(context).pop(); // Cierra el drawer
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (context) => OnboardingScreen(
+                        onFinish: () {
+                          Navigator.of(context).pushReplacement(
+                            MaterialPageRoute(
+                              builder: (context) => const HomeScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
       appBar: AppBar(
         backgroundColor: const Color(0xFFE8F2FF),
         elevation: 0,
@@ -300,7 +395,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   builder: (context) => const FavoritesScreen(),
                 ),
               );
-              // Recargar cuando vuelvas de favoritos
               setState(() {});
             },
             child: HeroIcon(
@@ -323,11 +417,10 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: HeroIcon(
-              HeroIcons.moon,
-              style: HeroIconStyle.outline,
+            child: IconButton(
+              icon: const Icon(Icons.menu),
               color: Colors.black87,
-              size: 24,
+              onPressed: () => _scaffoldKey.currentState?.openDrawer(),
             ),
           ),
         ],

@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 /// Modelo completo de datos procesados de WhatsApp
 class WhatsAppData {
   // Información básica
