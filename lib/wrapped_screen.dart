@@ -35,9 +35,11 @@ class _WrappedScreenState extends State<WrappedScreen>
   bool _isPaused = false; // Flag para pausar animación
   static const int _totalScreens = 9;
 
-  // Referencia a la primera pantalla para controlar animaciones
+  // Referencia a la primera y segunda pantalla para controlar animaciones
   final GlobalKey<WrappedFirstScreenState> _firstScreenKey =
       GlobalKey<WrappedFirstScreenState>();
+  final GlobalKey<WrappedSecondScreenState> _secondScreenKey =
+      GlobalKey<WrappedSecondScreenState>();
 
   @override
   void initState() {
@@ -59,10 +61,10 @@ class _WrappedScreenState extends State<WrappedScreen>
       });
     });
 
-    // Controlador para la barra de progreso
+    // Controlador para la barra de progreso (20 segundos por pantalla)
     _progressController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 18),
+      duration: const Duration(seconds: 20),
     );
 
     _progressAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -96,25 +98,24 @@ class _WrappedScreenState extends State<WrappedScreen>
   }
 
   void _startAnimation() {
-    print('_startAnimation() llamado');
     _fadeController.forward();
+    _forwardProgressWithCompletion();
+  }
+
+  void _forwardProgressWithCompletion() {
     _progressController.forward().then((_) {
-      print('Animación de progreso completada (10 segundos)');
-      // Después de 10 segundos, pasar a la siguiente pantalla
+      if (!mounted) return;
       if (_currentScreen < _totalScreens - 1) {
         _fadeController.reverse().then((_) {
-          print(
-              'Fade out completado, cambiando a pantalla ${_currentScreen + 1}');
+          if (!mounted) return;
           setState(() {
             _currentScreen++;
             _progress = 0.0;
           });
-          // Reiniciar el controlador para la siguiente pantalla
           _progressController.reset();
           _fadeController.forward();
-          _progressController.forward();
+          _forwardProgressWithCompletion();
 
-          // Reiniciar animaciones si volvemos a la primera pantalla
           if (_currentScreen == 0) {
             _firstScreenKey.currentState?.resetAnimations();
           }
@@ -122,7 +123,6 @@ class _WrappedScreenState extends State<WrappedScreen>
           print('Error en fade reverse: $error');
         });
       } else {
-        // Última pantalla completada, guardar el wrapped
         print('Todas las pantallas completadas, guardando wrapped...');
         _saveWrapped();
       }
@@ -132,30 +132,31 @@ class _WrappedScreenState extends State<WrappedScreen>
   }
 
   void _pauseAnimation() {
-    if (!_isPaused && _progressController.isAnimating) {
-      setState(() {
-        _isPaused = true;
-      });
-      _progressController.stop(canceled: false);
+    if (_isPaused) return;
+    setState(() {
+      _isPaused = true;
+      _progress = _progressAnimation.value;
+    });
+    _progressController.stop(canceled: false);
 
-      // Pausar animaciones de la primera pantalla si estamos en ella
-      if (_currentScreen == 0) {
-        _firstScreenKey.currentState?.pauseAnimations();
-      }
+    if (_currentScreen == 0) {
+      _firstScreenKey.currentState?.pauseAnimations();
+    } else if (_currentScreen == 1) {
+      _secondScreenKey.currentState?.pauseAnimations();
     }
   }
 
   void _resumeAnimation() {
-    if (_isPaused) {
-      setState(() {
-        _isPaused = false;
-      });
-      _progressController.forward();
+    if (!_isPaused) return;
+    setState(() {
+      _isPaused = false;
+    });
+    _progressController.forward();
 
-      // Reanudar animaciones de la primera pantalla si estamos en ella
-      if (_currentScreen == 0) {
-        _firstScreenKey.currentState?.resumeAnimations();
-      }
+    if (_currentScreen == 0) {
+      _firstScreenKey.currentState?.resumeAnimations();
+    } else if (_currentScreen == 1) {
+      _secondScreenKey.currentState?.resumeAnimations();
     }
   }
 
@@ -171,15 +172,15 @@ class _WrappedScreenState extends State<WrappedScreen>
     if (_currentScreen < _totalScreens - 1) {
       _progressController.stop();
       _fadeController.reverse().then((_) {
+        if (!mounted) return;
         setState(() {
           _currentScreen++;
           _progress = 0.0;
         });
         _progressController.reset();
         _fadeController.forward();
-        _progressController.forward();
+        _forwardProgressWithCompletion();
 
-        // Reiniciar animaciones si volvemos a la primera pantalla
         if (_currentScreen == 0) {
           _firstScreenKey.currentState?.resetAnimations();
         }
@@ -191,15 +192,15 @@ class _WrappedScreenState extends State<WrappedScreen>
     if (_currentScreen > 0) {
       _progressController.stop();
       _fadeController.reverse().then((_) {
+        if (!mounted) return;
         setState(() {
           _currentScreen--;
           _progress = 0.0;
         });
         _progressController.reset();
         _fadeController.forward();
-        _progressController.forward();
+        _forwardProgressWithCompletion();
 
-        // Reiniciar animaciones si volvemos a la primera pantalla
         if (_currentScreen == 0) {
           _firstScreenKey.currentState?.resetAnimations();
         }
@@ -207,16 +208,37 @@ class _WrappedScreenState extends State<WrappedScreen>
     }
   }
 
+  void _restartCurrentScreen() {
+    _progressController.stop();
+    _progressController.reset();
+    _progress = 0.0;
+    _forwardProgressWithCompletion();
+
+    if (_currentScreen == 0) {
+      _firstScreenKey.currentState?.resetAnimations();
+    } else if (_currentScreen == 1) {
+      _secondScreenKey.currentState?.resetAnimations();
+    }
+  }
+
   void _handleTap(TapDownDetails details) {
     final screenWidth = MediaQuery.of(context).size.width;
     final tapX = details.globalPosition.dx;
 
-    // Si el tap es en la mitad derecha de la pantalla, avanzar
     if (tapX > screenWidth / 2) {
       _goToNextScreen();
     } else {
-      // Si el tap es en la mitad izquierda, retroceder
-      _goToPreviousScreen();
+      // Tap izquierdo: primeros 4 seg → pantalla anterior; pasado 50% → reiniciar
+      const secondsPerScreen = 20;
+      final progressSeconds = _progress * secondsPerScreen;
+
+      if (progressSeconds < 4 && _currentScreen > 0) {
+        _goToPreviousScreen();
+      } else if (_progress >= 0.5 || progressSeconds >= 4) {
+        _restartCurrentScreen();
+      } else {
+        _goToPreviousScreen();
+      }
     }
   }
 
@@ -388,6 +410,21 @@ class _WrappedScreenState extends State<WrappedScreen>
                 opacity: _fadeAnimation,
                 child: _buildScreen(),
               ),
+              // "Creado con Whalyze" abajo de todas las pantallas
+              Positioned(
+                bottom: MediaQuery.of(context).padding.bottom + 8,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Text(
+                    'Creado con Whalyze',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.white.withOpacity(0.8),
+                    ),
+                  ),
+                ),
+              ),
               // Botones de control en la esquina superior derecha
               Positioned(
                 top: MediaQuery.of(context).padding.top +
@@ -444,6 +481,7 @@ class _WrappedScreenState extends State<WrappedScreen>
       );
     } else if (_currentScreen == 1) {
       return WrappedSecondScreen(
+        key: _secondScreenKey,
         data: _data!,
         totalScreens: _totalScreens,
       );

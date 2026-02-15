@@ -410,6 +410,7 @@ Fernando Inglán Bielsa: inglan.llorente@hotmail.com - 636411716
 
 ## Notas Importantes
 
+- **Wrapped: pantallas de 20s** – Cada pantalla dura 20 segundos. Las animaciones deben terminar en el segundo 18-19.
 - El procesamiento debe ser robusto ante variaciones en el formato
 - Manejar errores de parsing de fecha/hora sin detener el procesamiento completo
 - Considerar diferentes idiomas para mensajes del sistema (español/inglés principalmente)

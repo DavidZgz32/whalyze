@@ -41,35 +41,35 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
     // Calcular mensaje aleatorio una sola vez
     _calculateRandomMessage();
 
-    // Inicializar controladores de animación
+    // Inicializar controladores de animación (todo distribuido en ~18-19 segundos)
     _titleFadeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 1200),
     );
 
     _titlePositionController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 1000),
     );
 
     _participantsController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 1000),
     );
 
     _firstMessageController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 1000),
     );
 
     _daysController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 1000),
     );
 
     _randomMessageController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 1000),
     );
 
     // Crear animaciones
@@ -169,20 +169,20 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
   void _startAnimations() {
     // 1. Aparecer título en el centro
     _titleFadeController.forward().then((_) {
-      // 2. Desplazar título hacia arriba
-      Future.delayed(const Duration(milliseconds: 2000), () {
+      // 2. Pausa para leer, luego desplazar título hacia arriba
+      Future.delayed(const Duration(milliseconds: 2500), () {
         _titlePositionController.forward().then((_) {
-          // 3. Aparecer participantes (delay reducido)
-          Future.delayed(const Duration(milliseconds: 800), () {
+          // 3. Aparecer participantes
+          Future.delayed(const Duration(milliseconds: 1000), () {
             _participantsController.forward().then((_) {
               // 4. Aparecer "todo empezó con un..."
-              Future.delayed(const Duration(milliseconds: 2000), () {
+              Future.delayed(const Duration(milliseconds: 2500), () {
                 _firstMessageController.forward().then((_) {
                   // 5. Aparecer días
-                  Future.delayed(const Duration(milliseconds: 2000), () {
+                  Future.delayed(const Duration(milliseconds: 2500), () {
                     _daysController.forward().then((_) {
                       // 6. Aparecer mensaje aleatorio
-                      Future.delayed(const Duration(milliseconds: 2000), () {
+                      Future.delayed(const Duration(milliseconds: 2500), () {
                         _randomMessageController.forward();
                       });
                     });

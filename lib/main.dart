@@ -144,47 +144,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _showFileOptionsDialog(BuildContext context, int lineCount,
-      String fileContent, String filePath) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Container(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Elige una opción',
-                  style: GoogleFonts.poppins(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                _buildServiceButton(
-                  context: context,
-                  title: 'WHALYZE',
-                  gradientColors: const [Color(0xFF00C980), Color(0xFF00A6B6)],
-                  cost: 'Gratuito',
-                  lineCount: lineCount,
-                  fileContent: fileContent,
-                  filePath: filePath,
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   void _showExportDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -205,7 +164,34 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Ve a WhatsApp → la conversación que quieras → Exportar chat → Abrir con Whalyze',
+                '1. Ve a WhatsApp.',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '2. Abre la conversación que quieras.',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '3. Menú (⋮) → Exportar chat.',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '4. Abre el archivo con Whalyze.',
                 style: GoogleFonts.poppins(
                   fontSize: 16,
                   fontWeight: FontWeight.w400,
@@ -245,6 +231,24 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Icon(Icons.lock_outline, size: 20, color: Colors.grey[700]),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Tus datos se procesan en el propio teléfono.',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.grey[700],
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -370,79 +374,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildServiceButton({
-    required BuildContext context,
-    required String title,
-    required List<Color> gradientColors,
-    required String cost,
-    required int lineCount,
-    required String fileContent,
-    required String filePath,
-  }) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.of(context).pop();
-        if (title == 'WHALYZE') {
-          // Navegar a pantallas Wrapped
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => WrappedScreen(
-                filePath: filePath,
-                fileContent: fileContent,
-              ),
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text(
-                '$lineCount líneas abierto con $title',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-              backgroundColor: gradientColors[0],
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        }
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: gradientColors,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-        child: Column(
-          children: [
-            Text(
-              title,
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              cost,
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Future<void> _processFile(String filePath) async {
     try {
       String content;
@@ -465,10 +396,15 @@ class _HomeScreenState extends State<HomeScreen> {
         content = await file.readAsString();
       }
 
-      final lineCount = content.split('\n').length;
-
       if (mounted) {
-        _showFileOptionsDialog(context, lineCount, content, filePath);
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => WrappedScreen(
+              filePath: filePath,
+              fileContent: content,
+            ),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -515,11 +451,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 onTap: () {
                   Navigator.of(context).pop();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const FavoritesScreen(),
-                    ),
-                  ).then((_) => setState(() {}));
+                  Navigator.of(context)
+                      .push(
+                        MaterialPageRoute(
+                          builder: (context) => const FavoritesScreen(),
+                        ),
+                      )
+                      .then((_) => setState(() {}));
                 },
               ),
               ListTile(
@@ -572,7 +510,7 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.favorite_border),
-          color: Colors.white,
+          color: Colors.black,
           onPressed: () async {
             await Navigator.of(context).push(
               MaterialPageRoute(
@@ -585,7 +523,7 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.info_outline),
-            color: Colors.white,
+            color: Colors.black,
             onPressed: () => _scaffoldKey.currentState?.openDrawer(),
           ),
         ],
@@ -606,110 +544,111 @@ class _HomeScreenState extends State<HomeScreen> {
                   const Spacer(flex: 1),
                   // Logo: saludo_home (personaje + Whalyze)
                   Image.asset(
-                'assets/images/saludo_home.png',
-                height: 120,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(height: 32),
-              // Título
-              Text(
-                'Convierte tus chats en un Wrapped',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1B5E20),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Descubre lo que tus conversaciones\ndicen de ti',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                  color: const Color(0xFF1B5E20),
-                ),
-              ),
-              const Spacer(flex: 1),
-              // Botón Subir un chat
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => _showExportDialog(context),
-                      borderRadius: BorderRadius.circular(36),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 20),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4CAF50),
+                    'assets/images/saludo_home.png',
+                    height: 120,
+                    fit: BoxFit.contain,
+                  ),
+                  const SizedBox(height: 32),
+                  // Título
+                  Text(
+                    'Convierte tus chats en un Wrapped',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF1B5E20),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Descubre lo que tus conversaciones\ndicen de ti',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                      color: const Color(0xFF1B5E20),
+                    ),
+                  ),
+                  const Spacer(flex: 1),
+                  // Botón Subir un chat
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => _showExportDialog(context),
                           borderRadius: BorderRadius.circular(36),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF1B5E20),
-                              blurRadius: 0,
-                              spreadRadius: 3,
-                              offset: const Offset(0, 4),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 20),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF4CAF50),
+                              borderRadius: BorderRadius.circular(36),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF1B5E20),
+                                  blurRadius: 0,
+                                  spreadRadius: 3,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.chat_bubble_outline,
-                              color: Colors.white,
-                              size: 28,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.chat_bubble_outline,
+                                  color: Colors.white,
+                                  size: 28,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Subir un chat',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 12),
-                            Text(
-                              'Subir un chat',
-                              style: GoogleFonts.poppins(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              // Ver demo
-              GestureDetector(
-                onTap: _openDemo,
-                child: Text(
-                  'Ver demo',
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w400,
-                    color: const Color(0xFF1B5E20),
-                    decoration: TextDecoration.underline,
-                    decorationColor: const Color(0xFF1B5E20),
+                  const SizedBox(height: 12),
+                  // Ver demo
+                  GestureDetector(
+                    onTap: _openDemo,
+                    child: Text(
+                      'Ver demo',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                        color: const Color(0xFF1B5E20),
+                        decoration: TextDecoration.underline,
+                        decorationColor: const Color(0xFF1B5E20),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              const Spacer(flex: 2),
-              // Blurbs: Sin registro, Privado y seguro, 100% gratis
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  children: [
-                    _buildBlurb(Icons.check_circle_outline, 'Sin registro'),
-                    const SizedBox(height: 12),
-                    _buildBlurb(Icons.lock_outline, 'Privado y seguro'),
-                    const SizedBox(height: 12),
-                    _buildBlurb(Icons.sentiment_satisfied_alt, '100% gratis'),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
+                  const Spacer(flex: 2),
+                  // Blurbs: Sin registro, Privado y seguro, 100% gratis
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      children: [
+                        _buildBlurb(Icons.check_circle_outline, 'Sin registro'),
+                        const SizedBox(height: 12),
+                        _buildBlurb(Icons.lock_outline, 'Privado y seguro'),
+                        const SizedBox(height: 12),
+                        _buildBlurb(
+                            Icons.sentiment_satisfied_alt, '100% gratis'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
                 ],
               ),
             ),

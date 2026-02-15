@@ -13,24 +13,31 @@ class WrappedSecondScreen extends StatefulWidget {
   });
 
   @override
-  State<WrappedSecondScreen> createState() => _WrappedSecondScreenState();
+  State<WrappedSecondScreen> createState() => WrappedSecondScreenState();
 }
 
-class _WrappedSecondScreenState extends State<WrappedSecondScreen>
+class WrappedSecondScreenState extends State<WrappedSecondScreen>
     with TickerProviderStateMixin {
   late AnimationController _titleFadeController;
   late AnimationController _titlePositionController;
   late List<AnimationController> _participantControllers;
   late AnimationController _barController;
-  late AnimationController _dayController;
-  late AnimationController _monthController;
+  late AnimationController _dayTitleController;
+  late AnimationController _dayDateController;
+  late AnimationController _monthTitleController;
+  late AnimationController _monthDateController;
+  late AnimationController _monthPhraseController;
 
   late Animation<double> _titleFadeAnimation;
   late Animation<double> _titlePositionAnimation;
   late List<Animation<double>> _participantAnimations;
   late Animation<double> _barAnimation;
-  late Animation<double> _dayAnimation;
-  late Animation<double> _monthAnimation;
+  late Animation<double> _dayTitleAnimation;
+  late Animation<double> _dayDateAnimation;
+  late Animation<double> _monthTitleAnimation;
+  late Animation<double> _monthDateAnimation;
+  late Animation<double> _monthPhraseAnimation;
+  bool _animationsInitialized = false;
 
   @override
   void initState() {
@@ -39,39 +46,54 @@ class _WrappedSecondScreenState extends State<WrappedSecondScreen>
     // Calcular número de participantes
     final participantCount = widget.data.participants.length;
 
-    // Inicializar controladores de animación
+    // Inicializar controladores (título más rápido, resto un poco más lento)
     _titleFadeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 1200),
     );
 
     _titlePositionController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 1000),
     );
 
-    // Crear controladores para cada participante
+    // Crear controladores para cada participante (bolita más rápida)
     _participantControllers = List.generate(
       participantCount,
       (index) => AnimationController(
         vsync: this,
-        duration: const Duration(milliseconds: 600),
+        duration: const Duration(milliseconds: 700),
       ),
     );
 
     _barController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 1400),
     );
 
-    _dayController = AnimationController(
+    _dayTitleController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 1400),
     );
 
-    _monthController = AnimationController(
+    _dayDateController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 1400),
+    );
+
+    _monthTitleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
+    _monthDateController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
+    _monthPhraseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
     );
 
     // Crear animaciones
@@ -105,31 +127,50 @@ class _WrappedSecondScreenState extends State<WrappedSecondScreen>
       ),
     );
 
-    _dayAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+    _dayTitleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
-        parent: _dayController,
+        parent: _dayTitleController,
         curve: Curves.easeOut,
       ),
     );
 
-    _monthAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+    _dayDateAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
-        parent: _monthController,
+        parent: _dayDateController,
         curve: Curves.easeOut,
       ),
     );
 
-    // Iniciar animaciones
+    _monthTitleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _monthTitleController,
+        curve: Curves.easeOut,
+      ),
+    );
+
+    _monthDateAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _monthDateController,
+        curve: Curves.easeOut,
+      ),
+    );
+
+    _monthPhraseAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _monthPhraseController,
+        curve: Curves.easeOut,
+      ),
+    );
+
+    _animationsInitialized = true;
     _startAnimations();
   }
 
   void _startAnimations() {
-    // 1. Aparecer título en el centro
+    // 1. Aparecer título en el centro (más rápido)
     _titleFadeController.forward().then((_) {
-      // 2. Desplazar título hacia arriba
-      Future.delayed(const Duration(milliseconds: 2000), () {
+      Future.delayed(const Duration(milliseconds: 2500), () {
         _titlePositionController.forward().then((_) {
-          // 3. Aparecer participantes uno por uno
           _animateParticipantsSequentially();
         });
       });
@@ -139,24 +180,30 @@ class _WrappedSecondScreenState extends State<WrappedSecondScreen>
   void _animateParticipantsSequentially() {
     Future<void> animateNext(int index) async {
       if (index < _participantControllers.length) {
-        await Future.delayed(const Duration(milliseconds: 400));
+        await Future.delayed(const Duration(milliseconds: 500));
         _participantControllers[index].forward();
         await animateNext(index + 1);
       } else {
-        // Después de todos los participantes, mostrar la barra
-        await Future.delayed(const Duration(milliseconds: 400));
+        await Future.delayed(const Duration(milliseconds: 1200));
         _barController.forward();
 
-        // Después de la barra, mostrar día más ocupado
-        await Future.delayed(const Duration(milliseconds: 400));
+        await Future.delayed(const Duration(milliseconds: 1200));
         if (widget.data.dayWithMostMessages != null) {
-          _dayController.forward();
+          _dayTitleController.forward();
+          await Future.delayed(const Duration(milliseconds: 1500));
+          _dayDateController.forward();
         }
 
-        // Finalmente, mostrar mes más ocupado
-        await Future.delayed(const Duration(milliseconds: 400));
+        await Future.delayed(const Duration(milliseconds: 2000));
         if (widget.data.monthWithMostMessages != null) {
-          _monthController.forward();
+          _monthTitleController.forward();
+          await Future.delayed(const Duration(milliseconds: 1500));
+          _monthDateController.forward();
+          final monthNum = _getMonthKeyMonthNumber(widget.data.monthWithMostMessages!);
+          if (monthNum != null && _getMonthMessage(monthNum).isNotEmpty) {
+            await Future.delayed(const Duration(milliseconds: 2000));
+            _monthPhraseController.forward();
+          }
         }
       }
     }
@@ -172,9 +219,40 @@ class _WrappedSecondScreenState extends State<WrappedSecondScreen>
       controller.dispose();
     }
     _barController.dispose();
-    _dayController.dispose();
-    _monthController.dispose();
+    _dayTitleController.dispose();
+    _dayDateController.dispose();
+    _monthTitleController.dispose();
+    _monthDateController.dispose();
+    _monthPhraseController.dispose();
     super.dispose();
+  }
+
+  void pauseAnimations() {
+    _titleFadeController.stop(canceled: false);
+    _titlePositionController.stop(canceled: false);
+    for (final c in _participantControllers) {
+      c.stop(canceled: false);
+    }
+    _barController.stop(canceled: false);
+    _dayTitleController.stop(canceled: false);
+    _dayDateController.stop(canceled: false);
+    _monthTitleController.stop(canceled: false);
+    _monthDateController.stop(canceled: false);
+    _monthPhraseController.stop(canceled: false);
+  }
+
+  void resumeAnimations() {
+    _titleFadeController.forward();
+    _titlePositionController.forward();
+    for (final c in _participantControllers) {
+      c.forward();
+    }
+    _barController.forward();
+    _dayTitleController.forward();
+    _dayDateController.forward();
+    _monthTitleController.forward();
+    _monthDateController.forward();
+    _monthPhraseController.forward();
   }
 
   // Generar color consistente para cada participante
@@ -243,6 +321,31 @@ class _WrappedSecondScreenState extends State<WrappedSecondScreen>
     return '${months[monthNum - 1]} ${parts[0]}';
   }
 
+  int? _getMonthKeyMonthNumber(String monthKey) {
+    final parts = monthKey.split('-');
+    if (parts.length != 2) return null;
+    return int.tryParse(parts[1]);
+  }
+
+  // Mensaje según el mes (para día o mes más movido)
+  String _getMonthMessage(int monthNum) {
+    const messages = {
+      1: 'Nuevo año, nuevo tú... misma cantidad de mensajes.',
+      2: 'Mes corto, pero cargadito de drama digital',
+      3: 'Algo se despertó en marzo... y no fue la primavera.',
+      4: 'No llovieron solo gotas, también mensajes.',
+      5: '¿Estudiando o trabajando? Sí, cómo no. WhatsApp a tope.',
+      6: 'Junio se llenó de conversaciones que no estaban en el guión.',
+      7: 'Tanto mensaje en julio... ¿estábais preparando las vacaciones?',
+      8: 'Tantos mensajes en agosto... ¿sabías que existen las llamadas?',
+      9: 'No sabemos qué empezó, pero seguro empezó en septiembre.',
+      10: 'No hizo falta disfraz, los mensajes ya daban miedo.',
+      11: 'Noviembre fue el ensayo general antes del caos navideño.',
+      12: 'Entre memes y fiestas navideñas, ¡arrasásteis!',
+    };
+    return messages[monthNum] ?? '';
+  }
+
   // Formatear fecha en español
   String _formatDate(String dateKey) {
     // dateKey formato: "YYYY-MM-DD"
@@ -277,6 +380,10 @@ class _WrappedSecondScreenState extends State<WrappedSecondScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (!_animationsInitialized) {
+      return const SizedBox.shrink();
+    }
+
     // Calcular total de mensajes
     final totalMessages = widget.data.participantMessageCounts.values.fold<int>(
       0,
@@ -396,7 +503,7 @@ class _WrappedSecondScreenState extends State<WrappedSecondScreen>
                         ),
                       );
                     }),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 12),
                   // Barra combinada de porcentajes (solo si hay 2 participantes)
                   if (sortedParticipants.length == 2)
                     FadeTransition(
@@ -409,25 +516,28 @@ class _WrappedSecondScreenState extends State<WrappedSecondScreen>
                       ),
                     ),
                   const SizedBox(height: 40),
-                  // Día más ocupado
+                  // Día con más mensajes (título y fecha uno tras otro)
                   if (widget.data.dayWithMostMessages != null &&
                       widget.data.dayWithMostMessagesCount > 0)
-                    FadeTransition(
-                      opacity: _dayAnimation,
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 16.0),
-                        child: Column(
-                          children: [
-                            Text(
-                              'Día más ocupado',
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 24.0),
+                      child: Column(
+                        children: [
+                          FadeTransition(
+                            opacity: _dayTitleAnimation,
+                            child: Text(
+                              'DÍA CON MÁS MENSAJES',
                               style: GoogleFonts.poppins(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.white.withOpacity(0.9),
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
+                          ),
+                          const SizedBox(height: 4),
+                          FadeTransition(
+                            opacity: _dayDateAnimation,
+                            child: Text(
                               '${_formatDate(widget.data.dayWithMostMessages!)} - ${_formatNumber(widget.data.dayWithMostMessagesCount)} mensajes',
                               style: GoogleFonts.poppins(
                                 fontSize: 16,
@@ -436,29 +546,32 @@ class _WrappedSecondScreenState extends State<WrappedSecondScreen>
                               ),
                               textAlign: TextAlign.center,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
-                  // Mes más ocupado
+                  // El mes más movido (título, fecha y mensaje uno tras otro)
                   if (widget.data.monthWithMostMessages != null &&
                       widget.data.monthWithMostMessagesCount > 0)
-                    FadeTransition(
-                      opacity: _monthAnimation,
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 16.0),
-                        child: Column(
-                          children: [
-                            Text(
-                              'Mes más ocupado',
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: Column(
+                        children: [
+                          FadeTransition(
+                            opacity: _monthTitleAnimation,
+                            child: Text(
+                              'EL MES MÁS MOVIDO',
                               style: GoogleFonts.poppins(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.white.withOpacity(0.9),
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
+                          ),
+                          const SizedBox(height: 4),
+                          FadeTransition(
+                            opacity: _monthDateAnimation,
+                            child: Text(
                               '${_formatMonth(widget.data.monthWithMostMessages!)} - ${_formatNumber(widget.data.monthWithMostMessagesCount)} mensajes',
                               style: GoogleFonts.poppins(
                                 fontSize: 16,
@@ -467,8 +580,23 @@ class _WrappedSecondScreenState extends State<WrappedSecondScreen>
                               ),
                               textAlign: TextAlign.center,
                             ),
+                          ),
+                          if (_getMonthKeyMonthNumber(widget.data.monthWithMostMessages!) != null) ...[
+                            const SizedBox(height: 24),
+                            FadeTransition(
+                              opacity: _monthPhraseAnimation,
+                              child: Text(
+                                '"${_getMonthMessage(_getMonthKeyMonthNumber(widget.data.monthWithMostMessages!)!)}"',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  fontStyle: FontStyle.italic,
+                                  color: Colors.white.withOpacity(0.85),
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
                           ],
-                        ),
+                        ],
                       ),
                     ),
                 ],
@@ -490,8 +618,8 @@ class _WrappedSecondScreenState extends State<WrappedSecondScreen>
       children: [
         // Círculo con iniciales
         Container(
-          width: 64,
-          height: 64,
+          width: 52,
+          height: 52,
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
@@ -500,7 +628,7 @@ class _WrappedSecondScreenState extends State<WrappedSecondScreen>
             child: Text(
               initials,
               style: GoogleFonts.poppins(
-                fontSize: 24,
+                fontSize: 20,
                 fontWeight: FontWeight.w600,
                 color: Colors.white,
               ),
@@ -560,7 +688,7 @@ class _WrappedSecondScreenState extends State<WrappedSecondScreen>
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         // Porcentajes como texto
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -583,7 +711,39 @@ class _WrappedSecondScreenState extends State<WrappedSecondScreen>
             ),
           ],
         ),
+        const SizedBox(height: 6),
+        Center(
+          child: Text(
+            _getPercentageMessage(participant1, participant2, percentage1, percentage2),
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Colors.white.withOpacity(0.85),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
       ],
     );
+  }
+
+  String _getPercentageMessage(String p1, String p2, double perc1, double perc2) {
+    final diff = (perc1 - perc2).abs();
+    if (diff < 0.1) return 'Casi al 50%';
+    final more = perc1 >= perc2 ? p1 : p2;
+    return '$more tiene ${diff.toStringAsFixed(1)}% más de mensajes';
+  }
+
+  void resetAnimations() {
+    _titleFadeController.reset();
+    _titlePositionController.reset();
+    for (final c in _participantControllers) c.reset();
+    _barController.reset();
+    _dayTitleController.reset();
+    _dayDateController.reset();
+    _monthTitleController.reset();
+    _monthDateController.reset();
+    _monthPhraseController.reset();
+    _startAnimations();
   }
 }
