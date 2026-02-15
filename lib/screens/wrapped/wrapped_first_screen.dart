@@ -216,12 +216,19 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
   }
 
   void resumeAnimations() {
-    _titleFadeController.forward();
-    _titlePositionController.forward();
-    _participantsController.forward();
-    _firstMessageController.forward();
-    _daysController.forward();
-    _randomMessageController.forward();
+    // Solo reanudar los controladores que estaban en progreso (evita "todo de golpe")
+    void forwardIfInProgress(AnimationController c) {
+      if (c.value > 0 && c.value < 1) {
+        c.forward();
+      }
+    }
+
+    forwardIfInProgress(_titleFadeController);
+    forwardIfInProgress(_titlePositionController);
+    forwardIfInProgress(_participantsController);
+    forwardIfInProgress(_firstMessageController);
+    forwardIfInProgress(_daysController);
+    forwardIfInProgress(_randomMessageController);
   }
 
   @override

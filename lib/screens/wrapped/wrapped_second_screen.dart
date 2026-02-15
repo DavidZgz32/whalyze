@@ -22,6 +22,7 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
   late AnimationController _titlePositionController;
   late List<AnimationController> _participantControllers;
   late AnimationController _barController;
+  late AnimationController _barMessageController;
   late AnimationController _dayTitleController;
   late AnimationController _dayDateController;
   late AnimationController _monthTitleController;
@@ -32,6 +33,7 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
   late Animation<double> _titlePositionAnimation;
   late List<Animation<double>> _participantAnimations;
   late Animation<double> _barAnimation;
+  late Animation<double> _barMessageAnimation;
   late Animation<double> _dayTitleAnimation;
   late Animation<double> _dayDateAnimation;
   late Animation<double> _monthTitleAnimation;
@@ -69,6 +71,11 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
     _barController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1400),
+    );
+
+    _barMessageController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
     );
 
     _dayTitleController = AnimationController(
@@ -127,6 +134,13 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
       ),
     );
 
+    _barMessageAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _barMessageController,
+        curve: Curves.easeOut,
+      ),
+    );
+
     _dayTitleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _dayTitleController,
@@ -169,7 +183,7 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
   void _startAnimations() {
     // 1. Aparecer título en el centro (más rápido)
     _titleFadeController.forward().then((_) {
-      Future.delayed(const Duration(milliseconds: 2500), () {
+      Future.delayed(const Duration(milliseconds: 1200), () {
         _titlePositionController.forward().then((_) {
           _animateParticipantsSequentially();
         });
@@ -187,6 +201,9 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
         await Future.delayed(const Duration(milliseconds: 1200));
         _barController.forward();
 
+        await Future.delayed(const Duration(milliseconds: 1500));
+        _barMessageController.forward();
+
         await Future.delayed(const Duration(milliseconds: 1200));
         if (widget.data.dayWithMostMessages != null) {
           _dayTitleController.forward();
@@ -199,7 +216,8 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
           _monthTitleController.forward();
           await Future.delayed(const Duration(milliseconds: 1500));
           _monthDateController.forward();
-          final monthNum = _getMonthKeyMonthNumber(widget.data.monthWithMostMessages!);
+          final monthNum =
+              _getMonthKeyMonthNumber(widget.data.monthWithMostMessages!);
           if (monthNum != null && _getMonthMessage(monthNum).isNotEmpty) {
             await Future.delayed(const Duration(milliseconds: 2000));
             _monthPhraseController.forward();
@@ -219,6 +237,7 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
       controller.dispose();
     }
     _barController.dispose();
+    _barMessageController.dispose();
     _dayTitleController.dispose();
     _dayDateController.dispose();
     _monthTitleController.dispose();
@@ -234,6 +253,7 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
       c.stop(canceled: false);
     }
     _barController.stop(canceled: false);
+    _barMessageController.stop(canceled: false);
     _dayTitleController.stop(canceled: false);
     _dayDateController.stop(canceled: false);
     _monthTitleController.stop(canceled: false);
@@ -242,17 +262,25 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
   }
 
   void resumeAnimations() {
-    _titleFadeController.forward();
-    _titlePositionController.forward();
-    for (final c in _participantControllers) {
-      c.forward();
+    // Solo reanudar los controladores que estaban en progreso (evita "todo de golpe")
+    void forwardIfInProgress(AnimationController c) {
+      if (c.value > 0 && c.value < 1) {
+        c.forward();
+      }
     }
-    _barController.forward();
-    _dayTitleController.forward();
-    _dayDateController.forward();
-    _monthTitleController.forward();
-    _monthDateController.forward();
-    _monthPhraseController.forward();
+
+    forwardIfInProgress(_titleFadeController);
+    forwardIfInProgress(_titlePositionController);
+    for (final c in _participantControllers) {
+      forwardIfInProgress(c);
+    }
+    forwardIfInProgress(_barController);
+    forwardIfInProgress(_barMessageController);
+    forwardIfInProgress(_dayTitleController);
+    forwardIfInProgress(_dayDateController);
+    forwardIfInProgress(_monthTitleController);
+    forwardIfInProgress(_monthDateController);
+    forwardIfInProgress(_monthPhraseController);
   }
 
   // Generar color consistente para cada participante
@@ -506,14 +534,11 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
                   const SizedBox(height: 12),
                   // Barra combinada de porcentajes (solo si hay 2 participantes)
                   if (sortedParticipants.length == 2)
-                    FadeTransition(
-                      opacity: _barAnimation,
-                      child: _buildCombinedProgressBar(
-                        sortedParticipants[0],
-                        sortedParticipants[1],
-                        percentages[sortedParticipants[0]] ?? 0.0,
-                        percentages[sortedParticipants[1]] ?? 0.0,
-                      ),
+                    _buildCombinedProgressBar(
+                      sortedParticipants[0],
+                      sortedParticipants[1],
+                      percentages[sortedParticipants[0]] ?? 0.0,
+                      percentages[sortedParticipants[1]] ?? 0.0,
                     ),
                   const SizedBox(height: 40),
                   // Día con más mensajes (título y fecha uno tras otro)
@@ -581,7 +606,9 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
                               textAlign: TextAlign.center,
                             ),
                           ),
-                          if (_getMonthKeyMonthNumber(widget.data.monthWithMostMessages!) != null) ...[
+                          if (_getMonthKeyMonthNumber(
+                                  widget.data.monthWithMostMessages!) !=
+                              null) ...[
                             const SizedBox(height: 24),
                             FadeTransition(
                               opacity: _monthPhraseAnimation,
@@ -661,73 +688,76 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
 
     return Column(
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: SizedBox(
-            height: 12,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final width1 = constraints.maxWidth * (percentage1 / 100);
-                final width2 = constraints.maxWidth * (percentage2 / 100);
+        FadeTransition(
+          opacity: _barAnimation,
+          child: Column(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: SizedBox(
+                  height: 12,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final width1 = constraints.maxWidth * (percentage1 / 100);
+                      final width2 = constraints.maxWidth * (percentage2 / 100);
 
-                return Row(
-                  children: [
-                    // Primera parte de la barra
-                    Container(
-                      width: width1,
-                      color: color1,
+                      return Row(
+                        children: [
+                          Container(width: width1, color: color1),
+                          Container(width: width2, color: color2),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${percentage1.toStringAsFixed(1)}%',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.white.withOpacity(0.7),
                     ),
-                    // Segunda parte de la barra
-                    Container(
-                      width: width2,
-                      color: color2,
+                  ),
+                  Text(
+                    '${percentage2.toStringAsFixed(1)}%',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.white.withOpacity(0.7),
                     ),
-                  ],
-                );
-              },
-            ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 4),
-        // Porcentajes como texto
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              '${percentage1.toStringAsFixed(1)}%',
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-                color: Colors.white.withOpacity(0.7),
-              ),
-            ),
-            Text(
-              '${percentage2.toStringAsFixed(1)}%',
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-                color: Colors.white.withOpacity(0.7),
-              ),
-            ),
-          ],
-        ),
         const SizedBox(height: 6),
-        Center(
-          child: Text(
-            _getPercentageMessage(participant1, participant2, percentage1, percentage2),
-            style: GoogleFonts.poppins(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: Colors.white.withOpacity(0.85),
+        FadeTransition(
+          opacity: _barMessageAnimation,
+          child: Center(
+            child: Text(
+              _getPercentageMessage(
+                  participant1, participant2, percentage1, percentage2),
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: Colors.white.withOpacity(0.85),
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
           ),
         ),
       ],
     );
   }
 
-  String _getPercentageMessage(String p1, String p2, double perc1, double perc2) {
+  String _getPercentageMessage(
+      String p1, String p2, double perc1, double perc2) {
     final diff = (perc1 - perc2).abs();
     if (diff < 0.1) return 'Casi al 50%';
     final more = perc1 >= perc2 ? p1 : p2;
@@ -739,6 +769,7 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
     _titlePositionController.reset();
     for (final c in _participantControllers) c.reset();
     _barController.reset();
+    _barMessageController.reset();
     _dayTitleController.reset();
     _dayDateController.reset();
     _monthTitleController.reset();

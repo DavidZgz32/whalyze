@@ -347,7 +347,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildBlurb(IconData icon, String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+      padding: const EdgeInsets.fromLTRB(40, 14, 20, 14),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(32),
@@ -357,7 +357,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, color: const Color(0xFF2E8B57), size: 24),
           const SizedBox(width: 12),
@@ -365,7 +366,7 @@ class _HomeScreenState extends State<HomeScreen> {
             text,
             style: GoogleFonts.poppins(
               fontSize: 16,
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w500,
               color: const Color(0xFF1B5E20),
             ),
           ),
@@ -551,11 +552,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 32),
                   // Título
                   Text(
-                    'Convierte tus chats en un Wrapped',
+                    'Convierte tus chats\nen un Wrapped',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.poppins(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 33,
+                      fontWeight: FontWeight.bold,
+                      height: 1.2,
                       color: const Color(0xFF1B5E20),
                     ),
                   ),
@@ -569,6 +571,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: const Color(0xFF1B5E20),
                     ),
                   ),
+                  const SizedBox(height: 4),
                   const Spacer(flex: 1),
                   // Botón Subir un chat
                   Padding(
@@ -618,7 +621,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 18),
                   // Ver demo
                   GestureDetector(
                     onTap: _openDemo,
@@ -633,19 +636,24 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
-                  const Spacer(flex: 2),
+                  const Spacer(flex: 1),
                   // Blurbs: Sin registro, Privado y seguro, 100% gratis
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      children: [
-                        _buildBlurb(Icons.check_circle_outline, 'Sin registro'),
-                        const SizedBox(height: 12),
-                        _buildBlurb(Icons.lock_outline, 'Privado y seguro'),
-                        const SizedBox(height: 12),
-                        _buildBlurb(
-                            Icons.sentiment_satisfied_alt, '100% gratis'),
-                      ],
+                  Transform.translate(
+                    offset: const Offset(0, -1),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildBlurb(
+                              Icons.check_circle_outline, 'Sin registro'),
+                          const SizedBox(height: 12),
+                          _buildBlurb(Icons.lock_outline, 'Privado y seguro'),
+                          const SizedBox(height: 12),
+                          _buildBlurb(
+                              Icons.sentiment_satisfied_alt, '100% gratis'),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 32),
