@@ -2,7 +2,6 @@ import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:heroicons/heroicons.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'wrapped_screen.dart';
@@ -94,35 +93,25 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0; // Whalyze expandido por defecto
   static const MethodChannel _channel = MethodChannel('com.example.wra5/file');
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  final List<String> _titles = ['Whalyze', 'Detectar red flags', 'Roast me'];
-
-  final List<List<Color>> _gradientColors = [
-    [const Color(0xFF00C980), const Color(0xFF00A6B6)], // Whalyze
-    [const Color(0xFFFF3B30), const Color(0xFFFF6B8A)], // Detectar red flags
-    [const Color(0xFFA2713F), const Color(0xFFE3B87A)], // Roast me
-  ];
-
-  final List<String> _buttonTexts = [
-    'Hacer mi Whalyze',
-    'Hacer mi Red Flags',
-    'Hacer mi Roast',
-  ];
-
-  final List<String> _descriptions = [
-    'Genera un resumen divertido con cualquier conversación de whatsapp!',
-    'Detecta redflags con IA y crea un resumen divertido',
-    'Crea mi roast me al estilo americano',
-  ];
-
-  final List<String> _costs = [
-    'Gratuito',
-    'Coste: 1,99€',
-    'Coste: 1,99€',
-  ];
+  static const String _demoChatContent = '''
+01/01/24, 10:00 - Ana: Hola! Qué tal estás?
+01/01/24, 10:01 - Luis: Muy bien! Y tú?
+01/01/24, 10:02 - Ana: Genial, probando Whalyze 🐋
+01/01/24, 10:03 - Luis: Qué divertido! A ver qué sale
+01/01/24, 10:05 - Ana: Espero que algo épico
+01/01/24, 10:06 - Luis: Sin duda jajaja
+01/01/24, 14:00 - Luis: Oye, has visto el resultado?
+01/01/24, 14:02 - Ana: Sí! Está genial, lo recomiendo
+01/01/24, 14:03 - Luis: 😂😂😂
+01/01/24, 14:04 - Ana: 100% de acuerdo
+02/01/24, 9:00 - Ana: Buenos días!
+02/01/24, 9:15 - Luis: Buenos días! Qué tal dormiste?
+02/01/24, 9:20 - Ana: Muy bien, soñé con ballenas
+02/01/24, 9:25 - Luis: Jajaja es la app, te ha marcado
+''';
 
   @override
   void initState() {
@@ -179,34 +168,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                // Botón WHALYZE
                 _buildServiceButton(
                   context: context,
                   title: 'WHALYZE',
-                  gradientColors: _gradientColors[0],
+                  gradientColors: const [Color(0xFF00C980), Color(0xFF00A6B6)],
                   cost: 'Gratuito',
-                  lineCount: lineCount,
-                  fileContent: fileContent,
-                  filePath: filePath,
-                ),
-                const SizedBox(height: 16),
-                // Botón DETECTAR RED FLAGS
-                _buildServiceButton(
-                  context: context,
-                  title: 'DETECTAR RED FLAGS',
-                  gradientColors: _gradientColors[1],
-                  cost: '1,99€',
-                  lineCount: lineCount,
-                  fileContent: fileContent,
-                  filePath: filePath,
-                ),
-                const SizedBox(height: 16),
-                // Botón ROAST ME
-                _buildServiceButton(
-                  context: context,
-                  title: 'ROAST ME',
-                  gradientColors: _gradientColors[2],
-                  cost: '1,99€',
                   lineCount: lineCount,
                   fileContent: fileContent,
                   filePath: filePath,
@@ -216,6 +182,189 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       },
+    );
+  }
+
+  void _showExportDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            '¿Cómo exportar un chat?',
+            style: GoogleFonts.inter(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Ve a WhatsApp → la conversación que quieras → Exportar chat → Abrir con Whalyze',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'O selecciona el archivo desde aquí:',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    Navigator.of(context).pop();
+                    await _pickAndOpenFile();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF00C980),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    'Seleccionar archivo',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Cerrar',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _pickAndOpenFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.single.path != null) {
+        final filePath = result.files.single.path!;
+        try {
+          final file = File(filePath);
+          if (await file.exists()) {
+            final content = await file.readAsString();
+            if (!mounted) return;
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => WrappedScreen(
+                  filePath: filePath,
+                  fileContent: content,
+                ),
+              ),
+            );
+          } else {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'El archivo no existe',
+                    style: GoogleFonts.poppins(),
+                  ),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Error al leer el archivo: $e',
+                  style: GoogleFonts.poppins(),
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error al seleccionar archivo. Por favor, reinicia la app completamente.',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    }
+  }
+
+  void _openDemo() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => WrappedScreen(
+          filePath: 'demo',
+          fileContent: _demoChatContent,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBlurb(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.6),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: const Color(0xFF2E8B57), size: 24),
+          const SizedBox(width: 12),
+          Text(
+            text,
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF1B5E20),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -335,7 +484,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: const Color(0xFFF0F4F8),
+      backgroundColor: const Color(0xFFB8E986),
       drawer: Drawer(
         child: SafeArea(
           child: Column(
@@ -354,6 +503,38 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const Divider(height: 1),
               ListTile(
+                leading: const Icon(Icons.favorite_border),
+                title: Text(
+                  'Mis favoritos',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const FavoritesScreen(),
+                    ),
+                  ).then((_) => setState(() {}));
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.upload_file),
+                title: Text(
+                  'Cómo exportar un chat',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _showExportDialog(context);
+                },
+              ),
+              ListTile(
                 leading: const Icon(Icons.home_outlined),
                 title: Text(
                   'Volver a bienvenida',
@@ -363,7 +544,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 onTap: () {
-                  Navigator.of(context).pop(); // Cierra el drawer
+                  Navigator.of(context).pop();
                   Navigator.of(context).pushReplacement(
                     MaterialPageRoute(
                       builder: (context) => OnboardingScreen(
@@ -383,459 +564,150 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFE8F2FF),
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: GestureDetector(
-            onTap: () async {
-              await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const FavoritesScreen(),
-                ),
-              );
-              setState(() {});
-            },
-            child: HeroIcon(
-              HeroIcons.heart,
-              style: HeroIconStyle.outline,
-              color: Colors.black87,
-              size: 24,
-            ),
-          ),
+        leading: IconButton(
+          icon: const Icon(Icons.favorite_border),
+          color: Colors.white,
+          onPressed: () async {
+            await Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const FavoritesScreen(),
+              ),
+            );
+            setState(() {});
+          },
         ),
-        title: Text(
-          'WHALYZE',
-          style: GoogleFonts.inter(
-            color: Colors.black87,
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        centerTitle: true,
         actions: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: IconButton(
-              icon: const Icon(Icons.menu),
-              color: Colors.black87,
-              onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-            ),
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            color: Colors.white,
+            onPressed: () => _scaffoldKey.currentState?.openDrawer(),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
+      body: Container(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/fondo-back.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: SafeArea(
           child: Column(
-            children: List.generate(
-              _titles.length,
-              (index) => Padding(
-                padding: EdgeInsets.only(
-                  bottom: index < _titles.length - 1 ? 12 : 0,
-                ),
-                child: _ExpansionItem(
-                  title: _titles[index],
-                  gradientColors: _gradientColors[index],
-                  buttonText: _buttonTexts[index],
-                  description: _descriptions[index],
-                  cost: _costs[index],
-                  isExpanded: _selectedIndex == index,
-                  onTap: () {
-                    setState(() {
-                      _selectedIndex = _selectedIndex == index ? -1 : index;
-                    });
-                  },
+            children: [
+              const Spacer(flex: 1),
+              // Logo: saludo_home (personaje + Whalyze)
+              Image.asset(
+                'assets/images/saludo_home.png',
+                height: 120,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(height: 32),
+              // Título
+              Text(
+                'Convierte tus chats en un Wrapped',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1B5E20),
                 ),
               ),
-            ),
+              const SizedBox(height: 8),
+              Text(
+                'Descubre lo que tus conversaciones dicen de ti',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFF1B5E20),
+                ),
+              ),
+              const Spacer(flex: 1),
+              // Botón Subir un chat
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => _showExportDialog(context),
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4CAF50),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.chat_bubble_outline,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Subir un chat',
+                              style: GoogleFonts.poppins(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Ver demo
+              GestureDetector(
+                onTap: _openDemo,
+                child: Text(
+                  'Ver demo',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF1B5E20),
+                    decoration: TextDecoration.underline,
+                    decorationColor: const Color(0xFF1B5E20),
+                  ),
+                ),
+              ),
+              const Spacer(flex: 2),
+              // Blurbs: Sin registro, Privado y seguro, 100% gratis
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  children: [
+                    _buildBlurb(Icons.check_circle_outline, 'Sin registro'),
+                    const SizedBox(height: 12),
+                    _buildBlurb(Icons.lock_outline, 'Privado y seguro'),
+                    const SizedBox(height: 12),
+                    _buildBlurb(Icons.sentiment_satisfied_alt, '100% gratis'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+            ],
           ),
         ),
       ),
-    );
-  }
-}
-
-class _ExpansionItem extends StatefulWidget {
-  final String title;
-  final List<Color> gradientColors;
-  final String buttonText;
-  final String description;
-  final String cost;
-  final bool isExpanded;
-  final VoidCallback onTap;
-
-  const _ExpansionItem({
-    required this.title,
-    required this.gradientColors,
-    required this.buttonText,
-    required this.description,
-    required this.cost,
-    required this.isExpanded,
-    required this.onTap,
-  });
-
-  @override
-  State<_ExpansionItem> createState() => _ExpansionItemState();
-}
-
-class _ExpansionItemState extends State<_ExpansionItem>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _expandAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-    _expandAnimation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOut,
-    );
-    if (widget.isExpanded) {
-      _controller.value = 1.0;
-    }
-  }
-
-  @override
-  void didUpdateWidget(_ExpansionItem oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.isExpanded != oldWidget.isExpanded) {
-      if (widget.isExpanded) {
-        _controller.forward();
-      } else {
-        _controller.reverse();
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _showExportDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text(
-            '¿Cómo exportar un chat?',
-            style: GoogleFonts.inter(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                've a whatsapp -> la conversación que quieras -> exportar -> abrir con Whalyze',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'o también puedes seleccionar el archivo desde aquí:',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    try {
-                      FilePickerResult? result =
-                          await FilePicker.platform.pickFiles(
-                        type: FileType.any,
-                        allowMultiple: false,
-                      );
-
-                      if (result != null && result.files.single.path != null) {
-                        final filePath = result.files.single.path!;
-                        Navigator.of(context).pop();
-
-                        // Leer el contenido del archivo
-                        try {
-                          final file = File(filePath);
-                          if (await file.exists()) {
-                            final content = await file.readAsString();
-                            // Navegar a pantallas Wrapped
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => WrappedScreen(
-                                  filePath: filePath,
-                                  fileContent: content,
-                                ),
-                              ),
-                            );
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'El archivo no existe',
-                                  style: GoogleFonts.poppins(),
-                                ),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Error al leer el archivo: $e',
-                                style: GoogleFonts.poppins(),
-                              ),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      }
-                    } catch (e) {
-                      // Manejo de errores del plugin
-                      Navigator.of(context).pop();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Error al seleccionar archivo. Por favor, reinicia la app completamente.',
-                            style: GoogleFonts.poppins(),
-                          ),
-                          backgroundColor: Colors.red,
-                          duration: const Duration(seconds: 4),
-                        ),
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: Text(
-                    'Seleccionar archivo',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text(
-                'Cerrar',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // Título clickeable
-        GestureDetector(
-          onTap: widget.onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-            decoration: BoxDecoration(
-              borderRadius: widget.isExpanded
-                  ? const BorderRadius.only(
-                      topLeft: Radius.circular(12),
-                      topRight: Radius.circular(12),
-                    )
-                  : BorderRadius.circular(12),
-              gradient: LinearGradient(
-                colors: widget.gradientColors,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          widget.title,
-                          style: GoogleFonts.inter(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: widget.isExpanded
-                                ? FontWeight.w600
-                                : FontWeight.normal,
-                          ),
-                        ),
-                      ),
-                      if (widget.title == 'Detectar red flags' ||
-                          widget.title == 'Roast me')
-                        Padding(
-                          padding: const EdgeInsets.only(left: 8.0),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  const Color(0xFF6366F1),
-                                  const Color(0xFF8B5CF6),
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              'IA',
-                              style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                AnimatedRotation(
-                  duration: const Duration(milliseconds: 300),
-                  turns: widget.isExpanded ? 0.5 : 0,
-                  child: Icon(
-                    Icons.keyboard_arrow_down,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        // Contenido expandible
-        SizeTransition(
-          sizeFactor: _expandAnimation,
-          axisAlignment: -1.0,
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(12),
-                bottomRight: Radius.circular(12),
-              ),
-              color: Colors.white,
-              border: Border.all(
-                color: widget.gradientColors[0],
-                width: 2,
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    widget.description,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(
-                      color: Colors.black,
-                      fontSize: 20,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  // Botón Ver más
-                  TextButton(
-                    onPressed: () {},
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                    ),
-                    child: Text(
-                      'Ver más',
-                      style: GoogleFonts.poppins(
-                        fontSize: 18,
-                        fontWeight: FontWeight.normal,
-                        color: Colors.black87,
-                        decoration: TextDecoration.underline,
-                        decorationThickness: 2,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Botón Hacer mi X
-                  ElevatedButton(
-                    onPressed: () {
-                      _showExportDialog(context);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: widget.gradientColors[0],
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 20, horizontal: 24),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 2,
-                    ),
-                    child: Text(
-                      widget.buttonText,
-                      style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Coste
-                  Text(
-                    widget.cost,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(
-                      color: widget.title == 'Whalyze'
-                          ? const Color(0xFF9D4EDD)
-                          : Colors.black87,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

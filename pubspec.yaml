@@ -29,4 +29,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/images/privacidad.png
+    - assets/images/fondo-back.png
+    - assets/images/saludo_home.png
 

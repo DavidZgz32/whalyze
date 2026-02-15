@@ -17,8 +17,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
+  static const int _totalPages = 4;
+
   void _nextPage() {
-    if (_currentPage < 2) {
+    if (_currentPage < _totalPages - 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
@@ -49,21 +51,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Expanded(
               child: PageView(
                 controller: _pageController,
-                physics: const NeverScrollableScrollPhysics(),
                 onPageChanged: (i) => setState(() => _currentPage = i),
                 children: [
                   _WelcomePage(onContinue: _nextPage),
+                  _PrivacyPage(onContinue: _nextPage),
                   _HowToIntroPage(onContinue: _nextPage),
                   _HowToStepsPage(onFinish: _finish),
                 ],
               ),
             ),
-            if (_currentPage < 2)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 24),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(3, (i) {
+            Padding(
+              padding: const EdgeInsets.only(bottom: 24),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(_totalPages, (i) {
                     return Container(
                       margin: const EdgeInsets.symmetric(horizontal: 4),
                       width: 8,
@@ -163,7 +164,7 @@ class _HowToIntroPage extends StatelessWidget {
         children: [
           const Spacer(flex: 2),
           Text(
-            'Déjame un segundo para enseñarte cómo crearlo',
+            'Te explico como hacerlo en 10 segundos',
             textAlign: TextAlign.center,
             style: GoogleFonts.poppins(
               fontSize: 22,
@@ -172,8 +173,83 @@ class _HowToIntroPage extends StatelessWidget {
               color: Colors.black87,
             ),
           ),
+          const SizedBox(height: 16),
+          Text(
+            'Todo desde tu propio WhatsApp',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              height: 1.5,
+              color: Colors.black87,
+            ),
+          ),
           const SizedBox(height: 24),
           Image.asset('assets/images/explicando.png', height: 180, fit: BoxFit.contain),
+          const Spacer(flex: 2),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: onContinue,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF00C980),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              child: Text(
+                'Continuar',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 48),
+        ],
+      ),
+    );
+  }
+}
+
+class _PrivacyPage extends StatelessWidget {
+  final VoidCallback onContinue;
+
+  const _PrivacyPage({required this.onContinue});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Spacer(flex: 2),
+          Text(
+            'Tus datos están seguros',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+              height: 1.4,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Tu privacidad es importante. Los chats se procesan en tu dispositivo y no se envían a ningún servidor.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              height: 1.5,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Image.asset('assets/images/privacidad.png', height: 180, fit: BoxFit.contain),
           const Spacer(flex: 2),
           SizedBox(
             width: double.infinity,
@@ -212,53 +288,106 @@ class _HowToStepsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isIOS = Platform.isIOS;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+    debugPrint(isIOS ? 'iOS detectado' : 'Android detectado');
+
+    final steps = isIOS
+        ? [
+            'Abre WhatsApp',
+            'Entra en la conversación que quieras',
+            'Toca Más opciones (⋯)',
+            'Exportar chat',
+            'Abrir con Whalyze',
+          ]
+        : [
+            'Abre WhatsApp',
+            'Entra en la conversación que quieras',
+            'Toca el menú (⋮)',
+            'Exportar chat',
+            'Compartir con Whalyze',
+          ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 40),
-          Text(
-            isIOS ? 'En iOS ve a...' : 'En Android ve a...',
-            style: GoogleFonts.poppins(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    isIOS ? 'En iOS:' : 'En Android:',
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ...steps.asMap().entries.map((e) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 28,
+                              height: 28,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF00C980),
+                                shape: BoxShape.circle,
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '${e.key + 1}',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  e.value,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    height: 1.5,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )),
+                  const SizedBox(height: 24),
+                  Text(
+                    'O usa el botón Cargar',
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Desde la app podrás elegir un archivo de chat exportado desde tu dispositivo.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      height: 1.5,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Image.asset('assets/images/vamos.png', height: 180, fit: BoxFit.contain),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 12),
-          Text(
-            isIOS
-                ? 'WhatsApp → la conversación que quieras → Más opciones (⋯) → Exportar chat → Abrir con Whalyze'
-                : 'WhatsApp → la conversación que quieras → ⋮ → Exportar chat → Compartir con Whalyze',
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              height: 1.5,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'También puedes darle al botón Cargar',
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Desde la app podrás elegir un archivo de chat exportado desde tu dispositivo.',
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              height: 1.5,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 24),
-          Image.asset('assets/images/vamos.png', height: 180, fit: BoxFit.contain),
-          const SizedBox(height: 48),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
@@ -273,7 +402,7 @@ class _HowToStepsPage extends StatelessWidget {
                 elevation: 0,
               ),
               child: Text(
-                'Finalizar',
+                '¡Vamos allá!',
                 style: GoogleFonts.poppins(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
