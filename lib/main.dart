@@ -29,9 +29,9 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: Colors.white,
         textTheme: GoogleFonts.poppinsTextTheme(),
         appBarTheme: AppBarTheme(
-          titleTextStyle: GoogleFonts.inter(
+          titleTextStyle: GoogleFonts.poppins(
             fontSize: 24,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
             color: Colors.black87,
           ),
         ),
@@ -161,9 +161,9 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text(
                   'Elige una opción',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.poppins(
                     fontSize: 24,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                     color: Colors.black87,
                   ),
                 ),
@@ -195,9 +195,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           title: Text(
             '¿Cómo exportar un chat?',
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               fontSize: 20,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
             ),
           ),
           content: Column(
@@ -208,6 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 'Ve a WhatsApp → la conversación que quieras → Exportar chat → Abrir con Whalyze',
                 style: GoogleFonts.poppins(
                   fontSize: 16,
+                  fontWeight: FontWeight.w400,
                   height: 1.5,
                 ),
               ),
@@ -216,6 +217,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 'O selecciona el archivo desde aquí:',
                 style: GoogleFonts.poppins(
                   fontSize: 16,
+                  fontWeight: FontWeight.w400,
                   height: 1.5,
                 ),
               ),
@@ -239,7 +241,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     'Seleccionar archivo',
                     style: GoogleFonts.poppins(
                       fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
                 ),
@@ -253,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 'Cerrar',
                 style: GoogleFonts.poppins(
                   fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
             ),
@@ -344,7 +346,7 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(32),
         border: Border.all(
           color: Colors.white.withValues(alpha: 0.6),
           width: 1,
@@ -359,7 +361,7 @@ class _HomeScreenState extends State<HomeScreen> {
             text,
             style: GoogleFonts.poppins(
               fontSize: 16,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w400,
               color: const Color(0xFF1B5E20),
             ),
           ),
@@ -393,11 +395,11 @@ class _HomeScreenState extends State<HomeScreen> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
+                content: Text(
                 '$lineCount líneas abierto con $title',
                 style: GoogleFonts.poppins(
                   fontSize: 16,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
               backgroundColor: gradientColors[0],
@@ -420,10 +422,10 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Text(
               title,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.poppins(
                 color: Colors.white,
                 fontSize: 20,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 8),
@@ -508,7 +510,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   'Mis favoritos',
                   style: GoogleFonts.poppins(
                     fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
                 onTap: () {
@@ -526,7 +528,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   'Cómo exportar un chat',
                   style: GoogleFonts.poppins(
                     fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
                 onTap: () {
@@ -540,7 +542,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   'Volver a bienvenida',
                   style: GoogleFonts.poppins(
                     fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
                 onTap: () {
@@ -596,11 +598,14 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         child: SafeArea(
-          child: Column(
-            children: [
-              const Spacer(flex: 1),
-              // Logo: saludo_home (personaje + Whalyze)
-              Image.asset(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 340),
+              child: Column(
+                children: [
+                  const Spacer(flex: 1),
+                  // Logo: saludo_home (personaje + Whalyze)
+                  Image.asset(
                 'assets/images/saludo_home.png',
                 height: 120,
                 fit: BoxFit.contain,
@@ -611,14 +616,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 'Convierte tus chats en un Wrapped',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(
-                  fontSize: 24,
+                  fontSize: 28,
                   fontWeight: FontWeight.w700,
                   color: const Color(0xFF1B5E20),
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                'Descubre lo que tus conversaciones dicen de ti',
+                'Descubre lo que tus conversaciones\ndicen de ti',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(
                   fontSize: 16,
@@ -629,23 +634,24 @@ class _HomeScreenState extends State<HomeScreen> {
               const Spacer(flex: 1),
               // Botón Subir un chat
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
+                padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: SizedBox(
                   width: double.infinity,
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: () => _showExportDialog(context),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(36),
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 20),
                         decoration: BoxDecoration(
                           color: const Color(0xFF4CAF50),
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(36),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.2),
-                              blurRadius: 8,
+                              color: const Color(0xFF1B5E20),
+                              blurRadius: 0,
+                              spreadRadius: 3,
                               offset: const Offset(0, 4),
                             ),
                           ],
@@ -682,7 +688,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   'Ver demo',
                   style: GoogleFonts.poppins(
                     fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w400,
                     color: const Color(0xFF1B5E20),
                     decoration: TextDecoration.underline,
                     decorationColor: const Color(0xFF1B5E20),
@@ -692,7 +698,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const Spacer(flex: 2),
               // Blurbs: Sin registro, Privado y seguro, 100% gratis
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
                     _buildBlurb(Icons.check_circle_outline, 'Sin registro'),
@@ -704,7 +710,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-            ],
+                ],
+              ),
+            ),
           ),
         ),
       ),
