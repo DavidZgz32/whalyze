@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'wrapped_screen.dart';
 import 'services/wrapped_storage.dart';
 import 'favorites_screen.dart';
@@ -13,6 +14,7 @@ import 'onboarding_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await WrappedStorage.init();
+  await MobileAds.instance.initialize();
   runApp(const MyApp());
 }
 
