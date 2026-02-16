@@ -100,10 +100,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                     },
                     child: Container(
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
+                        gradient: const LinearGradient(
                           colors: [
-                            const Color(0xFF00C980),
-                            const Color(0xFF00A6B6),
+                            Color(0xFF00C980),
+                            Color(0xFF00A6B6),
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,

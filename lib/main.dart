@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:async';
+import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
@@ -70,11 +72,11 @@ class _AppStartState extends State<AppStart> {
   @override
   Widget build(BuildContext context) {
     if (_onboardingDone == null) {
-      return Scaffold(
-        backgroundColor: const Color(0xFFE8F2FF),
+      return const Scaffold(
+        backgroundColor: Color(0xFFE8F2FF),
         body: Center(
           child: CircularProgressIndicator(
-            color: const Color(0xFF00C980),
+            color: Color(0xFF00C980),
             strokeWidth: 2,
           ),
         ),
@@ -271,6 +273,30 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Si el archivo es .zip, descomprime y devuelve el contenido del .txt interno.
+  /// Si no, devuelve el contenido del archivo como texto.
+  Future<String> _readChatContentFromFile(String filePath) async {
+    final file = File(filePath);
+    if (!await file.exists()) {
+      throw Exception('El archivo no existe');
+    }
+    final bytes = await file.readAsBytes();
+    final isZip = filePath.toLowerCase().endsWith('.zip') ||
+        (bytes.length >= 2 && bytes[0] == 0x50 && bytes[1] == 0x4B);
+    if (isZip) {
+      final archive = ZipDecoder().decodeBytes(bytes);
+      for (var i = 0; i < archive.numberOfFiles(); i++) {
+        final name = archive.fileName(i);
+        if (name.toLowerCase().endsWith('.txt')) {
+          final data = archive.fileData(i);
+          return utf8.decode(data);
+        }
+      }
+      throw Exception('El ZIP no contiene ningún archivo .txt');
+    }
+    return file.readAsString();
+  }
+
   Future<void> _pickAndOpenFile() async {
     try {
       final result = await FilePicker.platform.pickFiles(
@@ -281,31 +307,16 @@ class _HomeScreenState extends State<HomeScreen> {
       if (result != null && result.files.single.path != null) {
         final filePath = result.files.single.path!;
         try {
-          final file = File(filePath);
-          if (await file.exists()) {
-            final content = await file.readAsString();
-            if (!mounted) return;
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => WrappedScreen(
-                  filePath: filePath,
-                  fileContent: content,
-                ),
+          final content = await _readChatContentFromFile(filePath);
+          if (!mounted) return;
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => WrappedScreen(
+                filePath: filePath,
+                fileContent: content,
               ),
-            );
-          } else {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'El archivo no existe',
-                    style: GoogleFonts.poppins(),
-                  ),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            }
-          }
+            ),
+          );
         } catch (e) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -339,7 +350,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openDemo() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => WrappedScreen(
+        builder: (context) => const WrappedScreen(
           filePath: 'demo',
           fileContent: _demoChatContent,
         ),
@@ -391,12 +402,8 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         content = fileContent;
       } else {
-        // Leer archivo normal
-        final file = File(filePath);
-        if (!await file.exists()) {
-          throw Exception('El archivo no existe');
-        }
-        content = await file.readAsString();
+        // Leer archivo normal (o descomprimir .zip y usar el .txt interno)
+        content = await _readChatContentFromFile(filePath);
       }
 
       if (mounted) {
@@ -590,19 +597,19 @@ class _HomeScreenState extends State<HomeScreen> {
                             decoration: BoxDecoration(
                               color: const Color(0xFF4CAF50),
                               borderRadius: BorderRadius.circular(36),
-                              boxShadow: [
+                              boxShadow: const [
                                 BoxShadow(
-                                  color: const Color(0xFF1B5E20),
+                                  color: Color(0xFF1B5E20),
                                   blurRadius: 0,
                                   spreadRadius: 3,
-                                  offset: const Offset(0, 4),
+                                  offset: Offset(0, 4),
                                 ),
                               ],
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(
+                                const Icon(
                                   Icons.chat_bubble_outline,
                                   color: Colors.white,
                                   size: 28,
