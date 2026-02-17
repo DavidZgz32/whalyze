@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../whatsapp_processor.dart';
+import '../../utils/participant_utils.dart';
 
 class WrappedSecondScreen extends StatefulWidget {
   final WhatsAppData data;
@@ -281,32 +282,6 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
     forwardIfInProgress(_monthTitleController);
     forwardIfInProgress(_monthDateController);
     forwardIfInProgress(_monthPhraseController);
-  }
-
-  // Generar color consistente para cada participante
-  Color _getParticipantColor(String participant) {
-    final hash = participant.hashCode;
-    final hue = (hash.abs() % 360).toDouble();
-    return HSLColor.fromAHSL(1.0, hue, 0.7, 0.6).toColor();
-  }
-
-  // Obtener iniciales del nombre
-  String _getInitials(String name) {
-    if (name.isEmpty) return '?';
-
-    // Limpiar espacios extra y dividir por espacios
-    final parts = name.trim().split(RegExp(r'\s+'));
-
-    if (parts.length == 1) {
-      // Solo un nombre: devolver primera letra
-      return parts[0][0].toUpperCase();
-    } else if (parts.length == 2) {
-      // Dos partes: devolver iniciales de ambas
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    } else {
-      // Más de dos partes: devolver solo la primera inicial
-      return parts[0][0].toUpperCase();
-    }
   }
 
   // Formatear número con puntos de miles
@@ -636,8 +611,8 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
   }
 
   Widget _buildParticipantColumn(String participant, double percentage) {
-    final color = _getParticipantColor(participant);
-    final initials = _getInitials(participant);
+    final color = getParticipantColor(participant);
+    final initials = getParticipantInitials(participant);
     final messageCount = widget.data.participantMessageCounts[participant] ?? 0;
 
     return Column(
@@ -683,8 +658,8 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
     double percentage1,
     double percentage2,
   ) {
-    final color1 = _getParticipantColor(participant1);
-    final color2 = _getParticipantColor(participant2);
+    final color1 = getParticipantColor(participant1);
+    final color2 = getParticipantColor(participant2);
 
     return Column(
       children: [

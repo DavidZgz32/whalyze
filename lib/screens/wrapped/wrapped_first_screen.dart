@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../whatsapp_processor.dart';
+import '../../utils/participant_utils.dart';
 
 class WrappedFirstScreen extends StatefulWidget {
   final WhatsAppData data;
@@ -33,6 +34,7 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
   late Animation<double> _randomMessageAnimation;
 
   String? _randomMessage; // Mensaje aleatorio calculado una sola vez
+  bool _paused = false;
 
   @override
   void initState() {
@@ -86,11 +88,6 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
         curve: Curves.easeInOut,
       ),
     );
-
-    // Listener para debug (puede eliminarse después)
-    _titlePositionController.addListener(() {
-      print('Title position animation value: ${_titlePositionAnimation.value}');
-    });
 
     _participantsAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
@@ -167,22 +164,28 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
   }
 
   void _startAnimations() {
+    _paused = false;
     // 1. Aparecer título en el centro
     _titleFadeController.forward().then((_) {
-      // 2. Pausa para leer, luego desplazar título hacia arriba
-      Future.delayed(const Duration(milliseconds: 2500), () {
+      if (!mounted || _paused) return;
+      Future.delayed(const Duration(milliseconds: 1200), () {
+        if (!mounted || _paused) return;
         _titlePositionController.forward().then((_) {
-          // 3. Aparecer participantes
-          Future.delayed(const Duration(milliseconds: 1000), () {
+          if (!mounted || _paused) return;
+          Future.delayed(const Duration(milliseconds: 800), () {
+            if (!mounted || _paused) return;
             _participantsController.forward().then((_) {
-              // 4. Aparecer "todo empezó con un..."
-              Future.delayed(const Duration(milliseconds: 2500), () {
+              if (!mounted || _paused) return;
+              Future.delayed(const Duration(milliseconds: 1200), () {
+                if (!mounted || _paused) return;
                 _firstMessageController.forward().then((_) {
-                  // 5. Aparecer días
-                  Future.delayed(const Duration(milliseconds: 2500), () {
+                  if (!mounted || _paused) return;
+                  Future.delayed(const Duration(milliseconds: 1200), () {
+                    if (!mounted || _paused) return;
                     _daysController.forward().then((_) {
-                      // 6. Aparecer mensaje aleatorio
-                      Future.delayed(const Duration(milliseconds: 2500), () {
+                      if (!mounted || _paused) return;
+                      Future.delayed(const Duration(milliseconds: 1200), () {
+                        if (!mounted || _paused) return;
                         _randomMessageController.forward();
                       });
                     });
@@ -196,6 +199,29 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
     });
   }
 
+  Widget _buildParticipantBall(String participant) {
+    final color = getParticipantColor(participant);
+    final initials = getParticipantInitials(participant);
+    return Container(
+      width: 52,
+      height: 52,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          initials,
+          style: GoogleFonts.poppins(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+
   void resetAnimations() {
     _titleFadeController.reset();
     _titlePositionController.reset();
@@ -207,6 +233,7 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
   }
 
   void pauseAnimations() {
+    _paused = true;
     _titleFadeController.stop(canceled: false);
     _titlePositionController.stop(canceled: false);
     _participantsController.stop(canceled: false);
@@ -216,10 +243,94 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
   }
 
   void resumeAnimations() {
-    // Solo reanudar los controladores que estaban en progreso (evita "todo de golpe")
+    _paused = false;
     void forwardIfInProgress(AnimationController c) {
-      if (c.value > 0 && c.value < 1) {
-        c.forward();
+      if (c.value > 0 && c.value < 1) c.forward();
+    }
+
+    void runNextStep() {
+      if (_titleFadeController.value < 1) {
+        _titleFadeController.forward();
+        return;
+      }
+      if (_titlePositionController.value < 1) {
+        _titlePositionController.forward().then((_) {
+          if (!mounted || _paused) return;
+          Future.delayed(const Duration(milliseconds: 800), () {
+            if (!mounted || _paused) return;
+            _participantsController.forward().then((_) {
+              if (!mounted || _paused) return;
+              Future.delayed(const Duration(milliseconds: 1200), () {
+                if (!mounted || _paused) return;
+                _firstMessageController.forward().then((_) {
+                  if (!mounted || _paused) return;
+                  Future.delayed(const Duration(milliseconds: 1200), () {
+                    if (!mounted || _paused) return;
+                    _daysController.forward().then((_) {
+                      if (!mounted || _paused) return;
+                      Future.delayed(const Duration(milliseconds: 1200), () {
+                        if (!mounted || _paused) return;
+                        _randomMessageController.forward();
+                      });
+                    });
+                  });
+                });
+              });
+            });
+          });
+        });
+        return;
+      }
+      if (_participantsController.value < 1) {
+        _participantsController.forward().then((_) {
+          if (!mounted || _paused) return;
+          Future.delayed(const Duration(milliseconds: 1200), () {
+            if (!mounted || _paused) return;
+            _firstMessageController.forward().then((_) {
+              if (!mounted || _paused) return;
+              Future.delayed(const Duration(milliseconds: 1200), () {
+                if (!mounted || _paused) return;
+                _daysController.forward().then((_) {
+                  if (!mounted || _paused) return;
+                  Future.delayed(const Duration(milliseconds: 1200), () {
+                    if (!mounted || _paused) return;
+                    _randomMessageController.forward();
+                  });
+                });
+              });
+            });
+          });
+        });
+        return;
+      }
+      if (_firstMessageController.value < 1) {
+        _firstMessageController.forward().then((_) {
+          if (!mounted || _paused) return;
+          Future.delayed(const Duration(milliseconds: 1200), () {
+            if (!mounted || _paused) return;
+            _daysController.forward().then((_) {
+              if (!mounted || _paused) return;
+              Future.delayed(const Duration(milliseconds: 1200), () {
+                if (!mounted || _paused) return;
+                _randomMessageController.forward();
+              });
+            });
+          });
+        });
+        return;
+      }
+      if (_daysController.value < 1) {
+        _daysController.forward().then((_) {
+          if (!mounted || _paused) return;
+          Future.delayed(const Duration(milliseconds: 1200), () {
+            if (!mounted || _paused) return;
+            _randomMessageController.forward();
+          });
+        });
+        return;
+      }
+      if (_randomMessageController.value < 1) {
+        _randomMessageController.forward();
       }
     }
 
@@ -229,6 +340,7 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
     forwardIfInProgress(_firstMessageController);
     forwardIfInProgress(_daysController);
     forwardIfInProgress(_randomMessageController);
+    runNextStep();
   }
 
   @override
@@ -328,17 +440,21 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
 
               return Positioned(
                 top: topPadding + currentTitleY,
-                left: 32,
-                right: 32,
+                left: 30,
+                right: 30,
                 child: Opacity(
                   opacity: _titleFadeAnimation.value,
-                  child: Text(
-                    'Bienvenid@ a tu Whatsapp Wrapped!',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'Bienvenid@ a tu Whatsapp Wrapped!',
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      style: GoogleFonts.inter(
+                        fontSize: 31,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
@@ -350,17 +466,34 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
             padding: EdgeInsets.only(
               top: topPadding + 100, // Espacio para el título desplazado
               bottom: MediaQuery.of(context).padding.bottom + 32,
-              left: 32,
-              right: 32,
+              left: 30,
+              right: 30,
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const SizedBox(
-                    height:
-                        20), // Espacio reducido para acercar participantes al título
-                // Participantes
+                const SizedBox(height: 20),
+                // Bolitas con iniciales de participantes (como en pantalla 2)
+                if (widget.data.participants.length >= 2)
+                  FadeTransition(
+                    opacity: _participantsAnimation,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildParticipantBall(widget.data.participants[0]),
+                        const SizedBox(width: 16),
+                        _buildParticipantBall(widget.data.participants[1]),
+                      ],
+                    ),
+                  )
+                else if (widget.data.participants.length == 1)
+                  FadeTransition(
+                    opacity: _participantsAnimation,
+                    child: _buildParticipantBall(widget.data.participants[0]),
+                  ),
+                const SizedBox(height: 12),
+                // Participantes (nombres)
                 FadeTransition(
                   opacity: _participantsAnimation,
                   child: Text(
