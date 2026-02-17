@@ -84,8 +84,8 @@ class WrappedFifthScreen extends StatelessWidget {
             Text(
               'Tú vs ellos',
               textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
-                fontSize: 26,
+              style: GoogleFonts.inter(
+                fontSize: 28,
                 fontWeight: FontWeight.w700,
                 color: Colors.white,
               ),

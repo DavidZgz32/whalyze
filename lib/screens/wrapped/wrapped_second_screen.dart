@@ -618,10 +618,10 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Círculo con iniciales
+        // Círculo con iniciales (mismo tamaño que pantalla 1)
         Container(
-          width: 52,
-          height: 52,
+          width: 40,
+          height: 40,
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
@@ -630,7 +630,7 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
             child: Text(
               initials,
               style: GoogleFonts.poppins(
-                fontSize: 20,
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: Colors.white,
               ),

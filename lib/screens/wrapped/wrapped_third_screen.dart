@@ -436,7 +436,7 @@ class WrappedThirdScreenState extends State<WrappedThirdScreen>
                   child: Text(
                     'Emojis más usados',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.inter(
                       fontSize: 28,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,

@@ -34,7 +34,7 @@ class WrappedPlaceholderScreen extends StatelessWidget {
             Text(
               'Pantalla ${screenNumber + 1}',
               style: GoogleFonts.inter(
-                fontSize: 32,
+                fontSize: 28,
                 fontWeight: FontWeight.w700,
                 color: Colors.white,
               ),
@@ -46,6 +46,3 @@ class WrappedPlaceholderScreen extends StatelessWidget {
     );
   }
 }
-
-
-
