@@ -452,7 +452,7 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
           ),
           // Contenedor con el contenido
           Positioned(
-            top: topPadding + 100,
+            top: topPadding + 80,
             bottom: MediaQuery.of(context).padding.bottom + 32,
             left: 32,
             right: 32,
@@ -461,7 +461,7 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
                 mainAxisAlignment: MainAxisAlignment.start,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 60),
+                  const SizedBox(height: 20),
                   // Participantes en 2 columnas
                   if (sortedParticipants.length == 2)
                     Row(

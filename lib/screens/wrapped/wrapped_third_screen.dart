@@ -224,10 +224,11 @@ class WrappedThirdScreenState extends State<WrappedThirdScreen>
   int _visibleLines = 0;
   Timer? _timer;
   static const int _delayMs = 1400; // 100ms menos entre cada línea
-  static const double _baseFontSize =
-      36.0; // primer emoji 6px más que antes (30+6)
+  static const double _baseFontSize = 36.0;
   static const double _fontSizeStep = 2.0; // cada fila baja 2px
   static const double _namesFontSize = 22.0;
+  /// Altura de referencia para calcular escala (pantalla "estándar")
+  static const double _referenceContentHeight = 520.0;
 
   late AnimationController _titleFadeController;
   late AnimationController _titlePositionController;
@@ -355,8 +356,6 @@ class WrappedThirdScreenState extends State<WrappedThirdScreen>
 
   void _startLineAnimation() {
     _visibleLines = 0;
-    final totalLines = _totalLines;
-
     _timer?.cancel();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -365,6 +364,12 @@ class WrappedThirdScreenState extends State<WrappedThirdScreen>
         if (_lineControllers.isNotEmpty) _lineControllers[0].forward();
       });
     });
+    _startLineTimer();
+  }
+
+  void _startLineTimer() {
+    final totalLines = _totalLines;
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(milliseconds: _delayMs), (_) {
       if (!mounted) return;
       setState(() {
@@ -376,6 +381,47 @@ class WrappedThirdScreenState extends State<WrappedThirdScreen>
         } else {
           _timer?.cancel();
         }
+      });
+    });
+  }
+
+  void pauseAnimations() {
+    _timer?.cancel();
+    _timer = null;
+    _titleFadeController.stop(canceled: false);
+    _titlePositionController.stop(canceled: false);
+    for (final c in _lineControllers) {
+      c.stop(canceled: false);
+    }
+  }
+
+  void resumeAnimations() {
+    if (_titleFadeController.value < 1.0) _titleFadeController.forward();
+    if (_titlePositionController.value < 1.0) _titlePositionController.forward();
+    for (var i = 0; i < _lineControllers.length; i++) {
+      final c = _lineControllers[i];
+      if (c.value > 0 && c.value < 1) c.forward();
+    }
+    if (_visibleLines < _totalLines) _startLineTimer();
+  }
+
+  void resetAnimations() {
+    _timer?.cancel();
+    _timer = null;
+    _titleFadeController.reset();
+    _titlePositionController.reset();
+    for (final c in _lineControllers) c.reset();
+    if (mounted) setState(() => _visibleLines = 0);
+    _titleFadeController.forward().then((_) {
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (!mounted) return;
+        _titlePositionController.forward().then((_) {
+          if (!mounted) return;
+          Future.delayed(const Duration(milliseconds: 400), () {
+            if (!mounted) return;
+            _startLineAnimation();
+          });
+        });
       });
     });
   }
@@ -411,6 +457,14 @@ class WrappedThirdScreenState extends State<WrappedThirdScreen>
         60;
     final bottomPadding = MediaQuery.of(context).padding.bottom + 32;
     final horizontalPadding = 32.0;
+
+    // Altura disponible para el contenido (debajo del título)
+    const contentTopOffset = 100.0;
+    final availableHeight =
+        screenHeight - topPadding - contentTopOffset - bottomPadding;
+    // Factor de escala para que todo quepa: mismo aspecto en todas las pantallas
+    final scale = (availableHeight / _referenceContentHeight)
+        .clamp(0.65, 1.0);
 
     return SizedBox(
       width: double.infinity,
@@ -459,14 +513,15 @@ class WrappedThirdScreenState extends State<WrappedThirdScreen>
                   if (_visibleLines >= 1 && _lineAnimations.isNotEmpty)
                     FadeTransition(
                       opacity: _lineAnimations[0],
-                      child:
-                          _buildNamesRow(leftName, rightName, _namesFontSize),
+                      child: _buildNamesRow(
+                          leftName, rightName, _namesFontSize * scale),
                     ),
                   ...List.generate(maxRows, (index) {
                     final lineIndex = 2 + index;
                     if (_visibleLines < lineIndex)
                       return const SizedBox.shrink();
-                    final fontSize = _baseFontSize - (index * _fontSizeStep);
+                    final fontSize =
+                        (_baseFontSize - (index * _fontSizeStep)) * scale;
                     final leftStat =
                         index < leftEmojis.length ? leftEmojis[index] : null;
                     final rightStat =
@@ -476,7 +531,7 @@ class WrappedThirdScreenState extends State<WrappedThirdScreen>
                         ? _lineAnimations[animIndex]
                         : null;
                     final row = Padding(
-                      padding: const EdgeInsets.only(top: 14),
+                      padding: EdgeInsets.only(top: 14 * scale),
                       child: _buildEmojiRow(
                         leftStat,
                         rightStat,
@@ -500,14 +555,14 @@ class WrappedThirdScreenState extends State<WrappedThirdScreen>
                         if (msg == null || msg.isEmpty)
                           return const SizedBox.shrink();
                         return Padding(
-                          padding: const EdgeInsets.only(top: 28),
+                          padding: EdgeInsets.only(top: 28 * scale),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             child: Text(
                               msg,
                               textAlign: TextAlign.center,
                               style: GoogleFonts.poppins(
-                                fontSize: 18,
+                                fontSize: 18 * scale,
                                 fontWeight: FontWeight.w500,
                                 color: Colors.white,
                                 height: 1.35,

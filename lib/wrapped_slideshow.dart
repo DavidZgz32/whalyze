@@ -41,6 +41,8 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
       GlobalKey<WrappedFirstScreenState>();
   final GlobalKey<WrappedSecondScreenState> _secondScreenKey =
       GlobalKey<WrappedSecondScreenState>();
+  final GlobalKey<WrappedThirdScreenState> _thirdScreenKey =
+      GlobalKey<WrappedThirdScreenState>();
 
   @override
   void initState() {
@@ -112,6 +114,8 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
             _firstScreenKey.currentState?.pauseAnimations();
           } else if (_currentScreen == 1) {
             _secondScreenKey.currentState?.pauseAnimations();
+          } else if (_currentScreen == 2) {
+            _thirdScreenKey.currentState?.pauseAnimations();
           }
         });
       }
@@ -131,6 +135,8 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
       _firstScreenKey.currentState?.pauseAnimations();
     } else if (_currentScreen == 1) {
       _secondScreenKey.currentState?.pauseAnimations();
+    } else if (_currentScreen == 2) {
+      _thirdScreenKey.currentState?.pauseAnimations();
     }
   }
 
@@ -143,6 +149,8 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
       _firstScreenKey.currentState?.resumeAnimations();
     } else if (_currentScreen == 1) {
       _secondScreenKey.currentState?.resumeAnimations();
+    } else if (_currentScreen == 2) {
+      _thirdScreenKey.currentState?.resumeAnimations();
     }
   }
 
@@ -201,6 +209,8 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
       _firstScreenKey.currentState?.resetAnimations();
     } else if (_currentScreen == 1) {
       _secondScreenKey.currentState?.resetAnimations();
+    } else if (_currentScreen == 2) {
+      _thirdScreenKey.currentState?.resetAnimations();
     }
   }
 
@@ -249,6 +259,7 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
     }
     if (_currentScreen == 2) {
       return WrappedThirdScreen(
+        key: _thirdScreenKey,
         data: data,
         totalScreens: _totalScreens,
       );
