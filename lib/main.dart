@@ -1,8 +1,7 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:async';
-import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_archive/flutter_archive.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -273,7 +272,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Si el archivo es .zip, descomprime y devuelve el contenido del .txt interno.
+  /// Si el archivo es .zip, descomprime con flutter_archive (APIs nativas) y devuelve el .txt interno.
   /// Si no, devuelve el contenido del archivo como texto.
   Future<String> _readChatContentFromFile(String filePath) async {
     final file = File(filePath);
@@ -284,17 +283,38 @@ class _HomeScreenState extends State<HomeScreen> {
     final isZip = filePath.toLowerCase().endsWith('.zip') ||
         (bytes.length >= 2 && bytes[0] == 0x50 && bytes[1] == 0x4B);
     if (isZip) {
-      final archive = ZipDecoder().decodeBytes(bytes);
-      for (var i = 0; i < archive.numberOfFiles(); i++) {
-        final name = archive.fileName(i);
-        if (name.toLowerCase().endsWith('.txt')) {
-          final data = archive.fileData(i);
-          return utf8.decode(data);
+      final tempDir = await Directory.systemTemp.createTemp('whalyze_zip');
+      try {
+        await ZipFile.extractToDirectory(
+          zipFile: file,
+          destinationDir: tempDir,
+          onExtracting: (zipEntry, progress) {
+            return zipEntry.name.toLowerCase().endsWith('.txt')
+                ? ZipFileOperation.includeItem
+                : ZipFileOperation.skipItem;
+          },
+        );
+        final txtFile = _findFirstTxtFile(tempDir);
+        if (txtFile == null) {
+          throw Exception('El ZIP no contiene ningún archivo .txt');
         }
+        return await txtFile.readAsString();
+      } finally {
+        try {
+          await tempDir.delete(recursive: true);
+        } catch (_) {}
       }
-      throw Exception('El ZIP no contiene ningún archivo .txt');
     }
     return file.readAsString();
+  }
+
+  File? _findFirstTxtFile(Directory dir) {
+    for (final entity in dir.listSync(recursive: true)) {
+      if (entity is File && entity.path.toLowerCase().endsWith('.txt')) {
+        return entity;
+      }
+    }
+    return null;
   }
 
   Future<void> _pickAndOpenFile() async {
@@ -390,27 +410,23 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _processFile(String filePath) async {
     try {
-      String content;
-
-      // Manejar URIs de content:// (usados por WhatsApp al compartir)
+      String pathToRead = filePath;
+      // Si nos pasan content:// (p. ej. al abrir con Whalyze), Android copia a temp y nos devuelve la ruta
       if (filePath.startsWith('content://')) {
-        // Leer desde content URI usando el método channel
-        final String? fileContent =
+        final String? tempPath =
             await _channel.invokeMethod('readContentUri', {'uri': filePath});
-        if (fileContent == null) {
+        if (tempPath == null || tempPath.isEmpty) {
           throw Exception('No se pudo leer el archivo desde content URI');
         }
-        content = fileContent;
-      } else {
-        // Leer archivo normal (o descomprimir .zip y usar el .txt interno)
-        content = await _readChatContentFromFile(filePath);
+        pathToRead = tempPath;
       }
+      final content = await _readChatContentFromFile(pathToRead);
 
       if (mounted) {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => WrappedScreen(
-              filePath: filePath,
+              filePath: pathToRead,
               fileContent: content,
             ),
           ),
