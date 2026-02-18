@@ -390,31 +390,27 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
                   ((_totalScreens - 1) * 2) +
                   4,
               right: 16,
-              child: GestureDetector(
-                onTap: () {},
-                behavior: HitTestBehavior.opaque,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      onPressed: _togglePlayPause,
-                      icon: Icon(
-                        _isPaused ? Icons.play_arrow : Icons.pause,
-                        color: Colors.white,
-                        size: 28,
-                      ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    onPressed: _togglePlayPause,
+                    icon: Icon(
+                      _isPaused ? Icons.play_arrow : Icons.pause,
+                      color: Colors.white,
+                      size: 28,
                     ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      onPressed: widget.onClose,
-                      icon: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 28,
-                      ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: widget.onClose,
+                    icon: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 28,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ],

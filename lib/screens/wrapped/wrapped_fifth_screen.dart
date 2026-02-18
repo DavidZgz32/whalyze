@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../whatsapp_processor.dart';
@@ -40,9 +42,18 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
 
   static const double _participantBallSize = 40.0;
   static const Color _numberBadgeBg = Color(0xFF00B872);
+  static const Color _greenBg = Color(0xFF2E7D32);
+  static const Color _redBg = Color(0xFFC62828);
+
+  late AnimationController _messageController;
+  late Animation<double> _messageAnimation;
+  late int _randomMessageIndex; // 0=starters, 1=response_time, 2=quick
+
+  bool _paused = false;
 
   @override
   void initState() {
+    _randomMessageIndex = Random().nextInt(3);
     super.initState();
     _initAnimations();
   }
@@ -86,8 +97,8 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
       CurvedAnimation(parent: _separatorController, curve: Curves.easeOut),
     );
 
-    // 4 filas de datos (excluyendo header)
-    const dataRowCount = 4;
+    // 3 filas de datos (excluyendo header)
+    const dataRowCount = 3;
     _rowTitleControllers = List.generate(
       dataRowCount,
       (_) => AnimationController(
@@ -122,24 +133,33 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
             CurvedAnimation(parent: c, curve: Curves.easeOut)))
         .toList();
 
+    _messageController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _messageAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _messageController, curve: Curves.easeOut),
+    );
+
     _startAnimations();
   }
 
   void _startAnimations() {
+    _paused = false;
     // 1. Título en el centro, luego se desplaza arriba
     _titleFadeController.forward().then((_) {
       Future.delayed(const Duration(milliseconds: 1200), () {
-        if (!mounted) return;
+        if (!mounted || _paused) return;
         _titlePositionController.forward().then((_) {
-          if (!mounted) return;
+          if (!mounted || _paused) return;
           // 2. Inicial 1, 700ms (200+500 extra), Inicial 2
           _initial1Controller.forward();
           Future.delayed(const Duration(milliseconds: 700), () {
-            if (!mounted) return;
+            if (!mounted || _paused) return;
             _initial2Controller.forward().then((_) {
-              if (!mounted) return;
+              if (!mounted || _paused) return;
               _separatorController.forward().then((_) {
-                if (!mounted) return;
+                if (!mounted || _paused) return;
                 _animateRowsSequentially();
               });
             });
@@ -152,19 +172,23 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
   Future<void> _animateRowsSequentially() async {
     // +900ms antes del primer título (tras la raya blanca)
     await Future.delayed(const Duration(milliseconds: 900));
-    for (int i = 0; i < 4; i++) {
-      if (!mounted) return;
+    if (!mounted || _paused) return;
+    for (int i = 0; i < 3; i++) {
+      if (!mounted || _paused) return;
       _rowTitleControllers[i].forward();
       await Future.delayed(const Duration(milliseconds: 2000));
-      if (!mounted) return;
+      if (!mounted || _paused) return;
       _rowValue1Controllers[i].forward();
       await Future.delayed(const Duration(milliseconds: 1200));
-      if (!mounted) return;
+      if (!mounted || _paused) return;
       _rowValue2Controllers[i].forward();
-      if (i < 3) {
+      if (i < 2) {
         await Future.delayed(const Duration(milliseconds: 1200));
       }
     }
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (!mounted || _paused) return;
+    _messageController.forward();
   }
 
   @override
@@ -183,6 +207,7 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
     for (final c in _rowValue2Controllers) {
       c.dispose();
     }
+    _messageController.dispose();
     super.dispose();
   }
 
@@ -201,10 +226,13 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
     for (final c in _rowValue2Controllers) {
       c.reset();
     }
+    _messageController.reset();
+    _randomMessageIndex = Random().nextInt(3);
     _startAnimations();
   }
 
   void pauseAnimations() {
+    _paused = true;
     _titleFadeController.stop(canceled: false);
     _titlePositionController.stop(canceled: false);
     _initial1Controller.stop(canceled: false);
@@ -219,9 +247,11 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
     for (final c in _rowValue2Controllers) {
       c.stop(canceled: false);
     }
+    _messageController.stop(canceled: false);
   }
 
   void resumeAnimations() {
+    _paused = false;
     void forwardIfInProgress(AnimationController c) {
       if (c.value > 0 && c.value < 1) c.forward();
     }
@@ -239,6 +269,26 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
     for (final c in _rowValue2Controllers) {
       forwardIfInProgress(c);
     }
+    forwardIfInProgress(_messageController);
+  }
+
+  /// Parsea tiempo "M:SS" o "H:MM:SS" a minutos. Menor = más rápido.
+  double? _parseResponseTimeMinutes(String s) {
+    if (s.isEmpty || s == '—') return null;
+    final parts = s.split(':');
+    if (parts.length == 2) {
+      final m = int.tryParse(parts[0]);
+      final sec = int.tryParse(parts[1]);
+      if (m != null && sec != null) return m + sec / 60;
+    } else if (parts.length == 3) {
+      final h = int.tryParse(parts[0]);
+      final m = int.tryParse(parts[1]);
+      final sec = int.tryParse(parts[2]);
+      if (h != null && m != null && sec != null) {
+        return h * 60 + m + sec / 60;
+      }
+    }
+    return null;
   }
 
   Widget _buildParticipantBall(String participant) {
@@ -276,21 +326,19 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
         title: 'Quién inicia más conversaciones',
         value1: '${widget.data.conversationStarters[p1] ?? 0}',
         value2: '${widget.data.conversationStarters[p2] ?? 0}',
+        rowType: _RowType.conversationStarters,
       ),
       _RowData(
         title: 'Tiempo medio de respuesta',
         value1: widget.data.averageResponseTimes[p1] ?? '—',
         value2: widget.data.averageResponseTimes[p2] ?? '—',
+        rowType: _RowType.responseTime,
       ),
       _RowData(
         title: 'Respuestas rápidas (menos de $quickMinutes min)',
         value1: '${widget.data.quickResponseCounts[p1] ?? 0}',
         value2: '${widget.data.quickResponseCounts[p2] ?? 0}',
-      ),
-      _RowData(
-        title: 'Mensajes enviados',
-        value1: '${widget.data.participantMessageCounts[p1] ?? 0}',
-        value2: '${widget.data.participantMessageCounts[p2] ?? 0}',
+        rowType: _RowType.quickResponses,
       ),
     ];
 
@@ -402,17 +450,41 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
                 ),
                 Expanded(
                   child: SingleChildScrollView(
-                    child: Table(
-                      columnWidths: const {
-                        0: FlexColumnWidth(2.2),
-                        1: FlexColumnWidth(0.9),
-                        2: FlexColumnWidth(0.9),
-                      },
-                      defaultVerticalAlignment:
-                          TableCellVerticalAlignment.middle,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        for (int i = 0; i < dataRows.length; i++)
-                          _buildAnimatedTableRow(dataRows[i], i),
+                        Table(
+                          columnWidths: const {
+                            0: FlexColumnWidth(2.2),
+                            1: FlexColumnWidth(0.9),
+                            2: FlexColumnWidth(0.9),
+                          },
+                          defaultVerticalAlignment:
+                              TableCellVerticalAlignment.middle,
+                          children: [
+                            for (int i = 0; i < dataRows.length; i++)
+                              _buildAnimatedTableRow(
+                                  dataRows[i], i, p1, p2),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        FadeTransition(
+                          opacity: _messageAnimation,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
+                            child: Center(
+                              child: Text(
+                                _getClosingMessage(p1, p2),
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white.withValues(alpha: 0.95),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -425,9 +497,52 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
     );
   }
 
-  TableRow _buildAnimatedTableRow(_RowData row, int index) {
+  /// Formato "David M." = nombre + inicial del siguiente si existe.
+  String _formatDisplayName(String name) {
+    final parts = name.trim().split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
+    if (parts.isEmpty) return name;
+    if (parts.length == 1) return parts[0];
+    if (parts[1].isEmpty) return parts[0];
+    return '${parts[0]} ${parts[1][0].toUpperCase()}.';
+  }
+
+  String _getClosingMessage(String p1, String p2) {
+    switch (_randomMessageIndex) {
+      case 0: // conversation starters
+        final c1 = widget.data.conversationStarters[p1] ?? 0;
+        final c2 = widget.data.conversationStarters[p2] ?? 0;
+        final winner = c1 >= c2 ? p1 : p2;
+        return '${_formatDisplayName(winner)} inicia más conversaciones… alguien tiene ganas de hablar 😏';
+      case 1: // response time
+        final t1 = _parseResponseTimeMinutes(
+            widget.data.averageResponseTimes[p1] ?? '—');
+        final t2 = _parseResponseTimeMinutes(
+            widget.data.averageResponseTimes[p2] ?? '—');
+        String winner;
+        if (t1 == null && t2 == null) {
+          winner = p1; // empate, elegir uno
+        } else if (t1 == null) {
+          winner = p2;
+        } else if (t2 == null) {
+          winner = p1;
+        } else {
+          winner = t1 <= t2 ? p1 : p2;
+        }
+        return '${_formatDisplayName(winner)} suele responder antes... Responder rápido también es una forma de cariño 😉';
+      case 2: // quick responses
+        final q1 = widget.data.quickResponseCounts[p1] ?? 0;
+        final q2 = widget.data.quickResponseCounts[p2] ?? 0;
+        final winner = q1 >= q2 ? p1 : p2;
+        return '${_formatDisplayName(winner)} tiene más respuestas rápidas… ¿duermes con el móvil en la mano? 😏';
+      default:
+        return '';
+    }
+  }
+
+  TableRow _buildAnimatedTableRow(
+      _RowData row, int index, String p1, String p2) {
     final titleStyle = GoogleFonts.poppins(
-      fontSize: 13,
+      fontSize: 16,
       fontWeight: FontWeight.w500,
       color: Colors.white,
       height: 1.3,
@@ -440,10 +555,56 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
     final isNumeric1 = _isNumeric(row.value1);
     final isNumeric2 = _isNumeric(row.value2);
 
+    Color? bg1;
+    Color? bg2;
+    switch (row.rowType) {
+      case _RowType.conversationStarters:
+        final v1 = int.tryParse(row.value1) ?? 0;
+        final v2 = int.tryParse(row.value2) ?? 0;
+        if (v1 > v2) {
+          bg1 = _greenBg;
+          bg2 = _redBg;
+        } else if (v2 > v1) {
+          bg1 = _redBg;
+          bg2 = _greenBg;
+        }
+        break;
+      case _RowType.responseTime:
+        final t1 = _parseResponseTimeMinutes(row.value1);
+        final t2 = _parseResponseTimeMinutes(row.value2);
+        if (t1 != null && t2 != null) {
+          if (t1 < t2) {
+            bg1 = _greenBg;
+            bg2 = _redBg;
+          } else if (t2 < t1) {
+            bg1 = _redBg;
+            bg2 = _greenBg;
+          }
+        } else if (t1 != null && t2 == null) {
+          bg1 = _greenBg;
+          bg2 = _redBg;
+        } else if (t1 == null && t2 != null) {
+          bg1 = _redBg;
+          bg2 = _greenBg;
+        }
+        break;
+      case _RowType.quickResponses:
+        final v1 = int.tryParse(row.value1) ?? 0;
+        final v2 = int.tryParse(row.value2) ?? 0;
+        if (v1 > v2) {
+          bg1 = _greenBg;
+          bg2 = _redBg;
+        } else if (v2 > v1) {
+          bg1 = _redBg;
+          bg2 = _greenBg;
+        }
+        break;
+    }
+
     return TableRow(
       children: [
         Padding(
-          padding: const EdgeInsets.only(right: 12, top: 10, bottom: 10),
+          padding: const EdgeInsets.only(right: 12, top: 14, bottom: 14),
           child: FadeTransition(
             opacity: _rowTitleAnimations[index],
             child: Text(
@@ -457,11 +618,12 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
         TableCell(
           verticalAlignment: TableCellVerticalAlignment.middle,
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
+            padding: const EdgeInsets.symmetric(vertical: 14),
             child: Center(
               child: FadeTransition(
                 opacity: _rowValue1Animations[index],
-                child: _buildValueWidget(row.value1, valueStyle, isNumeric1),
+                child: _buildValueWidget(
+                    row.value1, valueStyle, isNumeric1, bg1),
               ),
             ),
           ),
@@ -469,11 +631,12 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
         TableCell(
           verticalAlignment: TableCellVerticalAlignment.middle,
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
+            padding: const EdgeInsets.symmetric(vertical: 14),
             child: Center(
               child: FadeTransition(
                 opacity: _rowValue2Animations[index],
-                child: _buildValueWidget(row.value2, valueStyle, isNumeric2),
+                child: _buildValueWidget(
+                    row.value2, valueStyle, isNumeric2, bg2),
               ),
             ),
           ),
@@ -487,12 +650,17 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
     return int.tryParse(value) != null || double.tryParse(value) != null;
   }
 
-  Widget _buildValueWidget(String value, TextStyle style, bool isNumeric) {
-    if (isNumeric) {
+  Widget _buildValueWidget(
+      String value, TextStyle style, bool isNumeric, Color? bgColor) {
+    final effectiveColor =
+        bgColor ?? (isNumeric ? _numberBadgeBg : Colors.transparent);
+    final needsBackground = bgColor != null || isNumeric;
+
+    if (needsBackground && effectiveColor != Colors.transparent) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: _numberBadgeBg.withValues(alpha: 0.9),
+          color: effectiveColor.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
@@ -510,14 +678,18 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
   }
 }
 
+enum _RowType { conversationStarters, responseTime, quickResponses }
+
 class _RowData {
   final String title;
   final String value1;
   final String value2;
+  final _RowType rowType;
 
   _RowData({
     required this.title,
     required this.value1,
     required this.value2,
+    required this.rowType,
   });
 }
