@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'wrapped_screen_durations.dart';
 import 'whatsapp_processor.dart';
 import 'screens/wrapped/wrapped_first_screen.dart';
 import 'screens/wrapped/wrapped_second_screen.dart';
@@ -27,9 +28,9 @@ class WrappedSlideshow extends StatefulWidget {
 
 class _WrappedSlideshowState extends State<WrappedSlideshow>
     with TickerProviderStateMixin {
-  late AnimationController _progressController;
+  AnimationController? _progressController;
   late AnimationController _fadeController;
-  late Animation<double> _progressAnimation;
+  Animation<double>? _progressAnimation;
   late Animation<double> _fadeAnimation;
 
   int _currentScreen = 0;
@@ -43,22 +44,12 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
       GlobalKey<WrappedSecondScreenState>();
   final GlobalKey<WrappedThirdScreenState> _thirdScreenKey =
       GlobalKey<WrappedThirdScreenState>();
+  final GlobalKey<WrappedFifthScreenState> _fifthScreenKey =
+      GlobalKey<WrappedFifthScreenState>();
 
   @override
   void initState() {
     super.initState();
-
-    _progressController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 20),
-    );
-
-    _progressAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _progressController,
-        curve: Curves.linear,
-      ),
-    );
 
     _fadeController = AnimationController(
       vsync: this,
@@ -72,16 +63,36 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
       ),
     );
 
-    _progressController.addListener(() {
-      if (mounted) {
-        setState(() => _progress = _progressAnimation.value);
+    _createProgressControllerForCurrentScreen();
+    _fadeController.forward();
+    _progressController!.forward();
+  }
+
+  void _createProgressControllerForCurrentScreen() {
+    _progressController?.removeStatusListener(_onProgressStatusChanged);
+    _progressController?.dispose();
+
+    final durationMs =
+        WrappedScreenDurations.getDurationMs(_currentScreen);
+    _progressController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: durationMs),
+    );
+
+    _progressAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _progressController!,
+        curve: Curves.linear,
+      ),
+    );
+
+    _progressController!.addListener(() {
+      if (mounted && _progressAnimation != null) {
+        setState(() => _progress = _progressAnimation!.value);
       }
     });
 
-    _progressController.addStatusListener(_onProgressStatusChanged);
-
-    _fadeController.forward();
-    _progressController.forward();
+    _progressController!.addStatusListener(_onProgressStatusChanged);
   }
 
   void _onProgressStatusChanged(AnimationStatus status) {
@@ -99,10 +110,10 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
         _currentScreen++;
         _progress = 0.0;
       });
-      _progressController.reset();
+      _createProgressControllerForCurrentScreen();
       _fadeController.forward();
       if (!_isPaused) {
-        _progressController.forward();
+        _progressController!.forward();
       }
       if (_currentScreen == 0) {
         _firstScreenKey.currentState?.resetAnimations();
@@ -116,6 +127,8 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
             _secondScreenKey.currentState?.pauseAnimations();
           } else if (_currentScreen == 2) {
             _thirdScreenKey.currentState?.pauseAnimations();
+          } else if (_currentScreen == 4) {
+            _fifthScreenKey.currentState?.pauseAnimations();
           }
         });
       }
@@ -128,8 +141,8 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
     if (_isPaused) return;
     if (!mounted) return;
     setState(() => _isPaused = true);
-    if (_progressController.isAnimating) {
-      _progressController.stop(canceled: false);
+    if (_progressController?.isAnimating ?? false) {
+      _progressController!.stop(canceled: false);
     }
     if (_currentScreen == 0) {
       _firstScreenKey.currentState?.pauseAnimations();
@@ -137,6 +150,8 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
       _secondScreenKey.currentState?.pauseAnimations();
     } else if (_currentScreen == 2) {
       _thirdScreenKey.currentState?.pauseAnimations();
+    } else if (_currentScreen == 4) {
+      _fifthScreenKey.currentState?.pauseAnimations();
     }
   }
 
@@ -144,13 +159,15 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
     if (!_isPaused) return;
     if (!mounted) return;
     setState(() => _isPaused = false);
-    _progressController.forward();
+    _progressController?.forward();
     if (_currentScreen == 0) {
       _firstScreenKey.currentState?.resumeAnimations();
     } else if (_currentScreen == 1) {
       _secondScreenKey.currentState?.resumeAnimations();
     } else if (_currentScreen == 2) {
       _thirdScreenKey.currentState?.resumeAnimations();
+    } else if (_currentScreen == 4) {
+      _fifthScreenKey.currentState?.resumeAnimations();
     }
   }
 
@@ -164,16 +181,16 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
 
   void _goToNextScreen() {
     if (_currentScreen < _totalScreens - 1) {
-      _progressController.stop();
+      _progressController?.stop();
       _fadeController.reverse().then((_) {
         if (!mounted) return;
         setState(() {
           _currentScreen++;
           _progress = 0.0;
         });
-        _progressController.reset();
+        _createProgressControllerForCurrentScreen();
         _fadeController.forward();
-        _progressController.forward();
+        _progressController!.forward();
         if (_currentScreen == 0) {
           _firstScreenKey.currentState?.resetAnimations();
         }
@@ -183,16 +200,16 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
 
   void _goToPreviousScreen() {
     if (_currentScreen > 0) {
-      _progressController.stop();
+      _progressController?.stop();
       _fadeController.reverse().then((_) {
         if (!mounted) return;
         setState(() {
           _currentScreen--;
           _progress = 0.0;
         });
-        _progressController.reset();
+        _createProgressControllerForCurrentScreen();
         _fadeController.forward();
-        _progressController.forward();
+        _progressController!.forward();
         if (_currentScreen == 0) {
           _firstScreenKey.currentState?.resetAnimations();
         }
@@ -201,16 +218,18 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
   }
 
   void _restartCurrentScreen() {
-    _progressController.stop();
-    _progressController.reset();
-    _progress = 0.0;
-    _progressController.forward();
+    _progressController?.stop();
+    _progressController?.reset();
+    setState(() => _progress = 0.0);
+    _progressController?.forward();
     if (_currentScreen == 0) {
       _firstScreenKey.currentState?.resetAnimations();
     } else if (_currentScreen == 1) {
       _secondScreenKey.currentState?.resetAnimations();
     } else if (_currentScreen == 2) {
       _thirdScreenKey.currentState?.resetAnimations();
+    } else if (_currentScreen == 4) {
+      _fifthScreenKey.currentState?.resetAnimations();
     }
   }
 
@@ -221,7 +240,8 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
     if (tapX > screenWidth / 2) {
       _goToNextScreen();
     } else {
-      const secondsPerScreen = 20;
+      final secondsPerScreen =
+          WrappedScreenDurations.getDurationMs(_currentScreen) / 1000.0;
       final progressSeconds = _progress * secondsPerScreen;
       if (progressSeconds < 4 && _currentScreen > 0) {
         _goToPreviousScreen();
@@ -235,8 +255,8 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
 
   @override
   void dispose() {
-    _progressController.removeStatusListener(_onProgressStatusChanged);
-    _progressController.dispose();
+    _progressController?.removeStatusListener(_onProgressStatusChanged);
+    _progressController?.dispose();
     _fadeController.dispose();
     super.dispose();
   }
@@ -269,6 +289,7 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
     }
     if (_currentScreen == 4) {
       return WrappedFifthScreen(
+        key: _fifthScreenKey,
         data: data,
         totalScreens: _totalScreens,
       );
