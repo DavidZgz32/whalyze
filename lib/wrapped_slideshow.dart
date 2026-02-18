@@ -8,6 +8,7 @@ import 'screens/wrapped/wrapped_third_screen.dart';
 import 'screens/wrapped/wrapped_placeholder_screen.dart';
 import 'screens/wrapped/wrapped_ad_screen.dart';
 import 'screens/wrapped/wrapped_fifth_screen.dart';
+import 'screens/wrapped/wrapped_sixth_screen.dart';
 
 /// Slideshow unificado del Wrapped. Usado tanto al subir un chat como al abrirlo desde favoritos.
 class WrappedSlideshow extends StatefulWidget {
@@ -290,6 +291,12 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
     if (_currentScreen == 4) {
       return WrappedFifthScreen(
         key: _fifthScreenKey,
+        data: data,
+        totalScreens: _totalScreens,
+      );
+    }
+    if (_currentScreen == 5) {
+      return WrappedSixthScreen(
         data: data,
         totalScreens: _totalScreens,
       );
