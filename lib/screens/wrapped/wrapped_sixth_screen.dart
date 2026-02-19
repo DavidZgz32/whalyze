@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../whatsapp_processor.dart';
@@ -28,6 +30,26 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
     'Noche',
   ];
 
+  /// Mensajes por franja (0=Madrugada, 1=Mañana, 2=Tarde, 3=Noche). Se elige la franja con más mensajes.
+  static const List<List<String>> _bandPhrases = [
+    [
+      '¿Insomnio… o conversaciones que no pueden esperar? 🌙',
+      'Las mejores confesiones no siempre son de día 👀',
+    ],
+    [
+      '¿Las mañanas son para trabajar… o para hablar? 👀',
+      'Café en una mano, móvil en la otra ☕📱',
+    ],
+    [
+      'La tarde se calienta… y el chat también 🔥',
+      'Las tardes traen… muchas notificaciones 🔥',
+    ],
+    [
+      'Cuando cae la noche, sube la intensidad 👀',
+      'La noche tiene algo que invita a escribir más 👀',
+    ],
+  ];
+
   /// Colores del heatmap: de menor a mayor mensajes.
   static const List<Color> _heatmapColors = [
     Color(0xFFF3E8FF),
@@ -48,6 +70,8 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
   late final AnimationController _heatmapController;
   late final AnimationController _hourlyTitleController;
   late final AnimationController _hourlyBarsController;
+  late final AnimationController _dayLettersController;
+  late final AnimationController _finalPhraseController;
 
   late final Animation<double> _titleFadeAnimation;
   late final Animation<double> _titlePositionAnimation;
@@ -55,13 +79,27 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
 
   bool _paused = false;
 
+  int _bandWithMostMessages = 0;
+  int _phraseIndex = 0;
+
   static const int _hourlyBarDelayMs = 100;
   static const int _hourlyBarFadeMs = 300;
   static const double _hourlyBarHeight = 32.0;
 
+  /// Retraso en ms para que aparezca cada fila del mapa (Madrugada, Mañana, Tarde, Noche).
+  static const List<int> _bandDelayMs = [100, 700, 1300, 2000];
+  static const int _dayLetterDelayMs = 200;
+
   @override
   void initState() {
     super.initState();
+    try {
+      _bandWithMostMessages = _getBandWithMostMessages();
+      _phraseIndex = Random().nextInt(2);
+    } catch (_) {
+      _bandWithMostMessages = 0;
+      _phraseIndex = 0;
+    }
     _titleFadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -92,6 +130,14 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
       duration:
           Duration(milliseconds: 24 * _hourlyBarDelayMs + _hourlyBarFadeMs),
     );
+    _dayLettersController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    );
+    _finalPhraseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
 
     _titleFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _titleFadeController, curve: Curves.easeOut),
@@ -118,11 +164,15 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
             if (!mounted || _paused) return;
             _subtitleController.forward().then((_) {
               if (!mounted || _paused) return;
-              Future.delayed(const Duration(milliseconds: 1500), () {
+              Future.delayed(const Duration(milliseconds: 200), () {
                 if (!mounted || _paused) return;
-                _heatmapVisibleController.forward();
+                Future.delayed(const Duration(milliseconds: 1500), () {
+                  if (!mounted || _paused) return;
+                  _heatmapVisibleController.forward();
                 _heatmapController.forward();
+                _dayLettersController.forward();
                 _heatmapController.addStatusListener(_onHeatmapStatusChanged);
+                });
               });
             });
           });
@@ -138,8 +188,10 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
     _subtitleController.stop(canceled: false);
     _heatmapVisibleController.stop(canceled: false);
     _heatmapController.stop(canceled: false);
+    _dayLettersController.stop(canceled: false);
     _hourlyTitleController.stop(canceled: false);
     _hourlyBarsController.stop(canceled: false);
+    _finalPhraseController.stop(canceled: false);
   }
 
   void resumeAnimations() {
@@ -153,8 +205,10 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
     forwardIfInProgress(_subtitleController);
     forwardIfInProgress(_heatmapVisibleController);
     forwardIfInProgress(_heatmapController);
+    forwardIfInProgress(_dayLettersController);
     forwardIfInProgress(_hourlyTitleController);
     forwardIfInProgress(_hourlyBarsController);
+    forwardIfInProgress(_finalPhraseController);
   }
 
   void resetAnimations() {
@@ -164,8 +218,10 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
     _subtitleController.reset();
     _heatmapVisibleController.reset();
     _heatmapController.reset();
+    _dayLettersController.reset();
     _hourlyTitleController.reset();
     _hourlyBarsController.reset();
+    _finalPhraseController.reset();
     _startAnimations();
   }
 
@@ -177,7 +233,16 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
       if (!mounted || _paused) return;
       _hourlyTitleController.forward().then((_) {
         if (!mounted || _paused) return;
-        _hourlyBarsController.forward();
+        Future.delayed(const Duration(milliseconds: 600), () {
+          if (!mounted || _paused) return;
+          _hourlyBarsController.forward().then((_) {
+          if (!mounted || _paused) return;
+          Future.delayed(const Duration(milliseconds: 600), () {
+            if (!mounted || _paused) return;
+            _finalPhraseController.forward();
+          });
+        });
+        });
       });
     });
   }
@@ -190,8 +255,10 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
     _subtitleController.dispose();
     _heatmapVisibleController.dispose();
     _heatmapController.dispose();
+    _dayLettersController.dispose();
     _hourlyTitleController.dispose();
     _hourlyBarsController.dispose();
+    _finalPhraseController.dispose();
     super.dispose();
   }
 
@@ -245,7 +312,7 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
           // Contenido: subtítulo y heatmap (aparecen después)
           Padding(
             padding: EdgeInsets.only(
-              top: topPadding + 56,
+              top: topPadding + 51,
               bottom: bottomPadding,
               left: horizontalPadding,
               right: horizontalPadding,
@@ -267,7 +334,7 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
                     textAlign: TextAlign.center,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 7),
                 Expanded(
                   child: FadeTransition(
                     opacity: _heatmapVisibleAnimation,
@@ -288,68 +355,82 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              // Fila de días: 8 celdas iguales (vacía la primera + L M X J V S D)
+                              // Fila de días: aparecen uno a uno con 200ms entre cada uno
                               SizedBox(
                                 height: headerHeight,
-                                child: Row(
-                                  children: [
-                                    for (int i = 0; i < 8; i++)
-                                      SizedBox(
-                                        width: columnWidth,
-                                        height: headerHeight,
-                                        child: i == 0
-                                            ? const SizedBox.shrink()
-                                            : Center(
-                                                child: Text(
-                                                  _dayLetters[i - 1],
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Colors.white,
+                                child: AnimatedBuilder(
+                                  animation: _dayLettersController,
+                                  builder: (context, _) {
+                                    final totalMs = 7 * _dayLetterDelayMs;
+                                    return Row(
+                                      children: [
+                                        for (int i = 0; i < 8; i++)
+                                          SizedBox(
+                                            width: columnWidth,
+                                            height: headerHeight,
+                                            child: i == 0
+                                                ? const SizedBox.shrink()
+                                                : Opacity(
+                                                    opacity: (((_dayLettersController.value * totalMs) - (i - 1) * _dayLetterDelayMs) / 200.0).clamp(0.0, 1.0),
+                                                    child: Center(
+                                                      child: Text(
+                                                        _dayLetters[i - 1],
+                                                        style: GoogleFonts.poppins(
+                                                          fontSize: 13,
+                                                          fontWeight: FontWeight.w600,
+                                                          color: Colors.white,
+                                                        ),
+                                                      ),
+                                                    ),
                                                   ),
-                                                ),
-                                              ),
-                                      ),
-                                  ],
+                                          ),
+                                      ],
+                                    );
+                                  },
                                 ),
                               ),
                               SizedBox(height: dayHeaderGap),
                               AnimatedBuilder(
                                 animation: _heatmapController,
                                 builder: (context, _) {
+                                  final timeMs = _heatmapController.value * heatmapTotalMs;
                                   return Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: List.generate(4, (bandIndex) {
-                                      return SizedBox(
-                                        height: gridCellHeight,
-                                        child: Row(
-                                          children: [
-                                            SizedBox(
-                                              width: columnWidth,
-                                              height: gridCellHeight,
-                                              child: Align(
-                                                alignment:
-                                                    Alignment.centerRight,
-                                                child: Padding(
-                                                  padding:
-                                                      const EdgeInsets.only(
-                                                          right: 6),
-                                                  child: Text(
-                                                    _timeLabels[bandIndex],
-                                                    style: GoogleFonts.poppins(
-                                                      fontSize: 11,
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                      color: Colors.white,
+                                      final bandDelay = bandIndex < _bandDelayMs.length ? _bandDelayMs[bandIndex] : 0;
+                                      final rowOpacity = ((timeMs - bandDelay) / 300).clamp(0.0, 1.0);
+                                      return Opacity(
+                                        opacity: rowOpacity,
+                                        child: SizedBox(
+                                          height: gridCellHeight,
+                                          child: Row(
+                                            children: [
+                                              SizedBox(
+                                                width: columnWidth,
+                                                height: gridCellHeight,
+                                                child: Align(
+                                                  alignment:
+                                                      Alignment.centerRight,
+                                                  child: Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                            right: 6),
+                                                    child: Text(
+                                                      _timeLabels[bandIndex],
+                                                      style: GoogleFonts.poppins(
+                                                        fontSize: 11,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                        color: Colors.white,
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
                                                     ),
-                                                    maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
                                                   ),
                                                 ),
                                               ),
-                                            ),
-                                            ...List.generate(7, (dayIndex) {
+                                              ...List.generate(7, (dayIndex) {
                                               final count = (dayIndex <
                                                           matrix.length &&
                                                       bandIndex <
@@ -418,7 +499,8 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
                                                 ),
                                               );
                                             }),
-                                          ],
+                                            ],
+                                          ),
                                         ),
                                       );
                                     }),
@@ -426,7 +508,7 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
                                 },
                               ),
                               const SizedBox(height: 8),
-                              const SizedBox(height: 72),
+                              const SizedBox(height: 67),
                               FadeTransition(
                                 opacity:
                                     Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -435,7 +517,7 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
                                       curve: Curves.easeOut),
                                 ),
                                 child: Text(
-                                  'mapa de calor por horas (0-24h)',
+                                  'Mapa de calor por horas (0-24h)',
                                   style: GoogleFonts.poppins(
                                     fontSize: 13,
                                     color: Colors.white.withOpacity(0.9),
@@ -443,7 +525,7 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
                                   textAlign: TextAlign.center,
                                 ),
                               ),
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 5),
                               SizedBox(
                                 height: _hourlyBarHeight,
                                 child: AnimatedBuilder(
@@ -486,6 +568,27 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
                                   },
                                 ),
                               ),
+                              const SizedBox(height: 32),
+                              FadeTransition(
+                                opacity: Tween<double>(begin: 0.0, end: 1.0).animate(
+                                  CurvedAnimation(
+                                      parent: _finalPhraseController,
+                                      curve: Curves.easeOut),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Text(
+                                    _bandPhrases[_bandWithMostMessages][_phraseIndex],
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white.withOpacity(0.95),
+                                      height: 1.35,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
                               const SizedBox(height: 24),
                             ],
                           ),
@@ -500,6 +603,22 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
         ],
       ),
     );
+  }
+
+  /// Franja (0-3) con más mensajes en total.
+  int _getBandWithMostMessages() {
+    final matrix = widget.data.dayOfWeekTimeBandCounts;
+    final sums = [0, 0, 0, 0];
+    for (final row in matrix) {
+      for (int b = 0; b < row.length && b < 4; b++) {
+        sums[b] += row[b];
+      }
+    }
+    int best = 0;
+    for (int b = 1; b < 4; b++) {
+      if (sums[b] > sums[best]) best = b;
+    }
+    return best;
   }
 
   int _hourlyMax(List<int> hourly) {
