@@ -12,17 +12,14 @@ class WrappedScreenDurations {
   /// Pantalla 2: Día / mes con más mensajes
   static const int pantalla2 = 25000;
 
-  /// Pantalla 3: Anuncio (ad)
-  static const int pantalla3 = 15000;
+  /// Pantalla 3: ¿Quién mueve el chat?
+  static const int pantalla3 = 28000;
 
-  /// Pantalla 4: ¿Quién mueve el chat?
-  static const int pantalla4 = 28000;
-
-  /// Pantallas 5-8
+  /// Pantallas 4-7
+  static const int pantalla4 = 20000;
   static const int pantalla5 = 20000;
-  static const int pantalla6 = 20000;
+  static const int pantalla6 = 60000;
   static const int pantalla7 = 20000;
-  static const int pantalla8 = 20000;
 
   static const List<int> _durations = [
     pantalla0,
@@ -33,7 +30,6 @@ class WrappedScreenDurations {
     pantalla5,
     pantalla6,
     pantalla7,
-    pantalla8,
   ];
 
   /// Obtiene la duración en milisegundos para el índice de pantalla dado.

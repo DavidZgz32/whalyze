@@ -6,7 +6,6 @@ import 'screens/wrapped/wrapped_first_screen.dart';
 import 'screens/wrapped/wrapped_second_screen.dart';
 import 'screens/wrapped/wrapped_third_screen.dart';
 import 'screens/wrapped/wrapped_placeholder_screen.dart';
-import 'screens/wrapped/wrapped_ad_screen.dart';
 import 'screens/wrapped/wrapped_fifth_screen.dart';
 import 'screens/wrapped/wrapped_sixth_screen.dart';
 
@@ -37,7 +36,7 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
   int _currentScreen = 0;
   double _progress = 0.0;
   bool _isPaused = false;
-  static const int _totalScreens = 9;
+  static const int _totalScreens = 8;
 
   final GlobalKey<WrappedFirstScreenState> _firstScreenKey =
       GlobalKey<WrappedFirstScreenState>();
@@ -47,6 +46,8 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
       GlobalKey<WrappedThirdScreenState>();
   final GlobalKey<WrappedFifthScreenState> _fifthScreenKey =
       GlobalKey<WrappedFifthScreenState>();
+  final GlobalKey<WrappedSixthScreenState> _sixthScreenKey =
+      GlobalKey<WrappedSixthScreenState>();
 
   @override
   void initState() {
@@ -128,8 +129,10 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
             _secondScreenKey.currentState?.pauseAnimations();
           } else if (_currentScreen == 2) {
             _thirdScreenKey.currentState?.pauseAnimations();
-          } else if (_currentScreen == 4) {
+          } else if (_currentScreen == 3) {
             _fifthScreenKey.currentState?.pauseAnimations();
+          } else if (_currentScreen == 4) {
+            _sixthScreenKey.currentState?.pauseAnimations();
           }
         });
       }
@@ -151,8 +154,10 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
       _secondScreenKey.currentState?.pauseAnimations();
     } else if (_currentScreen == 2) {
       _thirdScreenKey.currentState?.pauseAnimations();
-    } else if (_currentScreen == 4) {
+    } else if (_currentScreen == 3) {
       _fifthScreenKey.currentState?.pauseAnimations();
+    } else if (_currentScreen == 4) {
+      _sixthScreenKey.currentState?.pauseAnimations();
     }
   }
 
@@ -167,8 +172,10 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
       _secondScreenKey.currentState?.resumeAnimations();
     } else if (_currentScreen == 2) {
       _thirdScreenKey.currentState?.resumeAnimations();
-    } else if (_currentScreen == 4) {
+    } else if (_currentScreen == 3) {
       _fifthScreenKey.currentState?.resumeAnimations();
+    } else if (_currentScreen == 4) {
+      _sixthScreenKey.currentState?.resumeAnimations();
     }
   }
 
@@ -188,6 +195,7 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
         setState(() {
           _currentScreen++;
           _progress = 0.0;
+          _isPaused = false;
         });
         _createProgressControllerForCurrentScreen();
         _fadeController.forward();
@@ -207,6 +215,7 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
         setState(() {
           _currentScreen--;
           _progress = 0.0;
+          _isPaused = false;
         });
         _createProgressControllerForCurrentScreen();
         _fadeController.forward();
@@ -221,7 +230,10 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
   void _restartCurrentScreen() {
     _progressController?.stop();
     _progressController?.reset();
-    setState(() => _progress = 0.0);
+    setState(() {
+      _progress = 0.0;
+      _isPaused = false;
+    });
     _progressController?.forward();
     if (_currentScreen == 0) {
       _firstScreenKey.currentState?.resetAnimations();
@@ -229,8 +241,10 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
       _secondScreenKey.currentState?.resetAnimations();
     } else if (_currentScreen == 2) {
       _thirdScreenKey.currentState?.resetAnimations();
-    } else if (_currentScreen == 4) {
+    } else if (_currentScreen == 3) {
       _fifthScreenKey.currentState?.resetAnimations();
+    } else if (_currentScreen == 4) {
+      _sixthScreenKey.currentState?.resetAnimations();
     }
   }
 
@@ -286,17 +300,15 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
       );
     }
     if (_currentScreen == 3) {
-      return const WrappedAdScreen(totalScreens: _totalScreens);
-    }
-    if (_currentScreen == 4) {
       return WrappedFifthScreen(
         key: _fifthScreenKey,
         data: data,
         totalScreens: _totalScreens,
       );
     }
-    if (_currentScreen == 5) {
+    if (_currentScreen == 4) {
       return WrappedSixthScreen(
+        key: _sixthScreenKey,
         data: data,
         totalScreens: _totalScreens,
       );
