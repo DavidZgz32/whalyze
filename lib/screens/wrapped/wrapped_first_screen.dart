@@ -28,6 +28,7 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
   late AnimationController _firstMessageController;
   late AnimationController _daysController;
   late AnimationController _randomMessageController;
+  late AnimationController _exitSlideController;
 
   late Animation<double> _titleFadeAnimation;
   late Animation<double> _titlePositionAnimation;
@@ -38,6 +39,7 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
   late Animation<double> _firstMessageAnimation;
   late Animation<double> _daysAnimation;
   late Animation<double> _randomMessageAnimation;
+  late Animation<Offset> _exitSlideAnimation;
 
   String? _randomMessage; // Mensaje aleatorio calculado una sola vez
   bool _paused = false;
@@ -93,6 +95,11 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
       duration: const Duration(milliseconds: 1000),
     );
 
+    _exitSlideController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+
     // Crear animaciones
     _titleFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
@@ -141,6 +148,14 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
         curve: Curves.easeOut,
       ),
     );
+
+    _exitSlideAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(-1.2, 0),
+    ).animate(CurvedAnimation(
+      parent: _exitSlideController,
+      curve: Curves.easeInOut,
+    ));
 
     // Iniciar animaciones
     _startAnimations();
@@ -198,31 +213,37 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
         if (!mounted || _paused || gen != _animationGeneration) return;
         _titlePositionController.forward().then((_) {
           if (!mounted || _paused || gen != _animationGeneration) return;
-          Future.delayed(const Duration(milliseconds: 800), () {
+          Future.delayed(const Duration(milliseconds: 900), () {
             if (!mounted || _paused || gen != _animationGeneration) return;
-            // Secuencia: círculo1 → 300ms → círculo2 → 300ms → nombre1 → 300ms → nombre2
+            // Secuencia: círculo1 → 400ms → círculo2 → 400ms → nombre1 → 400ms → nombre2
             _circle1Controller.forward();
-            Future.delayed(const Duration(milliseconds: 300), () {
+            Future.delayed(const Duration(milliseconds: 400), () {
               if (!mounted || _paused || gen != _animationGeneration) return;
               _circle2Controller.forward();
-              Future.delayed(const Duration(milliseconds: 300), () {
+              Future.delayed(const Duration(milliseconds: 400), () {
                 if (!mounted || _paused || gen != _animationGeneration) return;
                 _name1Controller.forward();
-                Future.delayed(const Duration(milliseconds: 300), () {
+                Future.delayed(const Duration(milliseconds: 400), () {
                   if (!mounted || _paused || gen != _animationGeneration) return;
                   _name2Controller.forward().then((_) {
                     if (!mounted || _paused || gen != _animationGeneration) return;
-                    Future.delayed(const Duration(milliseconds: 200), () {
+                    Future.delayed(const Duration(milliseconds: 700), () {
                       if (!mounted || _paused || gen != _animationGeneration) return;
                       _firstMessageController.forward().then((_) {
                         if (!mounted || _paused || gen != _animationGeneration) return;
-                        Future.delayed(const Duration(milliseconds: 2200), () {
+                        Future.delayed(const Duration(milliseconds: 2400), () {
                           if (!mounted || _paused || gen != _animationGeneration) return;
                           _daysController.forward().then((_) {
                             if (!mounted || _paused || gen != _animationGeneration) return;
-                            Future.delayed(const Duration(milliseconds: 2200), () {
+                            Future.delayed(const Duration(milliseconds: 2300), () {
                               if (!mounted || _paused || gen != _animationGeneration) return;
-                              _randomMessageController.forward();
+                              _randomMessageController.forward().then((_) {
+                                if (!mounted || _paused || gen != _animationGeneration) return;
+                                Future.delayed(const Duration(milliseconds: 2500), () {
+                                  if (!mounted || _paused || gen != _animationGeneration) return;
+                                  _exitSlideController.forward();
+                                });
+                              });
                             });
                           });
                         });
@@ -273,6 +294,7 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
     _firstMessageController.reset();
     _daysController.reset();
     _randomMessageController.reset();
+    _exitSlideController.reset();
     _startAnimations();
   }
 
@@ -288,6 +310,7 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
     _firstMessageController.stop(canceled: false);
     _daysController.stop(canceled: false);
     _randomMessageController.stop(canceled: false);
+    _exitSlideController.stop(canceled: false);
   }
 
   void resumeAnimations() {
@@ -305,30 +328,36 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
       if (_titlePositionController.value < 1) {
         _titlePositionController.forward().then((_) {
           if (!mounted || _paused || gen != _animationGeneration) return;
-          Future.delayed(const Duration(milliseconds: 800), () {
+          Future.delayed(const Duration(milliseconds: 900), () {
             if (!mounted || _paused || gen != _animationGeneration) return;
             _circle1Controller.forward();
-            Future.delayed(const Duration(milliseconds: 300), () {
+            Future.delayed(const Duration(milliseconds: 400), () {
               if (!mounted || _paused || gen != _animationGeneration) return;
               _circle2Controller.forward();
-              Future.delayed(const Duration(milliseconds: 300), () {
+              Future.delayed(const Duration(milliseconds: 400), () {
                 if (!mounted || _paused || gen != _animationGeneration) return;
                 _name1Controller.forward();
-                Future.delayed(const Duration(milliseconds: 300), () {
+                Future.delayed(const Duration(milliseconds: 400), () {
                   if (!mounted || _paused || gen != _animationGeneration) return;
                   _name2Controller.forward().then((_) {
                     if (!mounted || _paused || gen != _animationGeneration) return;
-                    Future.delayed(const Duration(milliseconds: 200), () {
+                    Future.delayed(const Duration(milliseconds: 700), () {
                       if (!mounted || _paused || gen != _animationGeneration) return;
                       _firstMessageController.forward().then((_) {
                         if (!mounted || _paused || gen != _animationGeneration) return;
-                        Future.delayed(const Duration(milliseconds: 2200), () {
+                        Future.delayed(const Duration(milliseconds: 2400), () {
                           if (!mounted || _paused || gen != _animationGeneration) return;
                           _daysController.forward().then((_) {
                             if (!mounted || _paused || gen != _animationGeneration) return;
-                            Future.delayed(const Duration(milliseconds: 2200), () {
+                            Future.delayed(const Duration(milliseconds: 2300), () {
                               if (!mounted || _paused || gen != _animationGeneration) return;
-                              _randomMessageController.forward();
+                              _randomMessageController.forward().then((_) {
+                                if (!mounted || _paused || gen != _animationGeneration) return;
+                                Future.delayed(const Duration(milliseconds: 2500), () {
+                                  if (!mounted || _paused || gen != _animationGeneration) return;
+                                  _exitSlideController.forward();
+                                });
+                              });
                             });
                           });
                         });
@@ -347,27 +376,33 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
         void runParticipantChain() {
           if (_circle1Controller.value < 1) {
             _circle1Controller.forward();
-            Future.delayed(const Duration(milliseconds: 300), () {
+            Future.delayed(const Duration(milliseconds: 400), () {
               if (!mounted || _paused || gen != _animationGeneration) return;
               _circle2Controller.forward();
-              Future.delayed(const Duration(milliseconds: 300), () {
+              Future.delayed(const Duration(milliseconds: 400), () {
                 if (!mounted || _paused || gen != _animationGeneration) return;
                 _name1Controller.forward();
-                Future.delayed(const Duration(milliseconds: 300), () {
+                Future.delayed(const Duration(milliseconds: 400), () {
                   if (!mounted || _paused || gen != _animationGeneration) return;
                   _name2Controller.forward().then((_) {
                     if (!mounted || _paused || gen != _animationGeneration) return;
-                    Future.delayed(const Duration(milliseconds: 200), () {
+                    Future.delayed(const Duration(milliseconds: 700), () {
                       if (!mounted || _paused || gen != _animationGeneration) return;
                       _firstMessageController.forward().then((_) {
                         if (!mounted || _paused || gen != _animationGeneration) return;
-                        Future.delayed(const Duration(milliseconds: 2200), () {
+                        Future.delayed(const Duration(milliseconds: 2400), () {
                           if (!mounted || _paused || gen != _animationGeneration) return;
                           _daysController.forward().then((_) {
                             if (!mounted || _paused || gen != _animationGeneration) return;
-                            Future.delayed(const Duration(milliseconds: 2200), () {
+                            Future.delayed(const Duration(milliseconds: 2300), () {
                               if (!mounted || _paused || gen != _animationGeneration) return;
-                              _randomMessageController.forward();
+                              _randomMessageController.forward().then((_) {
+                                if (!mounted || _paused || gen != _animationGeneration) return;
+                                Future.delayed(const Duration(milliseconds: 2500), () {
+                                  if (!mounted || _paused || gen != _animationGeneration) return;
+                                  _exitSlideController.forward();
+                                });
+                              });
                             });
                           });
                         });
@@ -381,24 +416,30 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
           }
           if (_circle2Controller.value < 1) {
             _circle2Controller.forward();
-            Future.delayed(const Duration(milliseconds: 300), () {
+            Future.delayed(const Duration(milliseconds: 400), () {
               if (!mounted || _paused || gen != _animationGeneration) return;
               _name1Controller.forward();
-              Future.delayed(const Duration(milliseconds: 300), () {
+              Future.delayed(const Duration(milliseconds: 400), () {
                 if (!mounted || _paused || gen != _animationGeneration) return;
                 _name2Controller.forward().then((_) {
                   if (!mounted || _paused || gen != _animationGeneration) return;
-                  Future.delayed(const Duration(milliseconds: 200), () {
+                  Future.delayed(const Duration(milliseconds: 700), () {
                     if (!mounted || _paused || gen != _animationGeneration) return;
                     _firstMessageController.forward().then((_) {
                       if (!mounted || _paused || gen != _animationGeneration) return;
-                      Future.delayed(const Duration(milliseconds: 2200), () {
+                      Future.delayed(const Duration(milliseconds: 2400), () {
                         if (!mounted || _paused || gen != _animationGeneration) return;
                         _daysController.forward().then((_) {
                           if (!mounted || _paused || gen != _animationGeneration) return;
-                          Future.delayed(const Duration(milliseconds: 2200), () {
+                          Future.delayed(const Duration(milliseconds: 2300), () {
                             if (!mounted || _paused || gen != _animationGeneration) return;
-                            _randomMessageController.forward();
+                            _randomMessageController.forward().then((_) {
+                              if (!mounted || _paused || gen != _animationGeneration) return;
+                              Future.delayed(const Duration(milliseconds: 2500), () {
+                                if (!mounted || _paused || gen != _animationGeneration) return;
+                                _exitSlideController.forward();
+                              });
+                            });
                           });
                         });
                       });
@@ -411,21 +452,27 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
           }
           if (_name1Controller.value < 1) {
             _name1Controller.forward();
-            Future.delayed(const Duration(milliseconds: 300), () {
+            Future.delayed(const Duration(milliseconds: 400), () {
               if (!mounted || _paused || gen != _animationGeneration) return;
               _name2Controller.forward().then((_) {
                 if (!mounted || _paused || gen != _animationGeneration) return;
-                Future.delayed(const Duration(milliseconds: 200), () {
+                Future.delayed(const Duration(milliseconds: 700), () {
                   if (!mounted || _paused || gen != _animationGeneration) return;
                   _firstMessageController.forward().then((_) {
                     if (!mounted || _paused || gen != _animationGeneration) return;
-                    Future.delayed(const Duration(milliseconds: 2200), () {
+                    Future.delayed(const Duration(milliseconds: 2400), () {
                       if (!mounted || _paused || gen != _animationGeneration) return;
                       _daysController.forward().then((_) {
                         if (!mounted || _paused || gen != _animationGeneration) return;
-                        Future.delayed(const Duration(milliseconds: 2200), () {
+                        Future.delayed(const Duration(milliseconds: 2300), () {
                           if (!mounted || _paused || gen != _animationGeneration) return;
-                          _randomMessageController.forward();
+                          _randomMessageController.forward().then((_) {
+                            if (!mounted || _paused || gen != _animationGeneration) return;
+                            Future.delayed(const Duration(milliseconds: 2500), () {
+                              if (!mounted || _paused || gen != _animationGeneration) return;
+                              _exitSlideController.forward();
+                            });
+                          });
                         });
                       });
                     });
@@ -438,17 +485,23 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
           if (_name2Controller.value < 1) {
             _name2Controller.forward().then((_) {
               if (!mounted || _paused || gen != _animationGeneration) return;
-              Future.delayed(const Duration(milliseconds: 200), () {
+              Future.delayed(const Duration(milliseconds: 700), () {
                 if (!mounted || _paused || gen != _animationGeneration) return;
                 _firstMessageController.forward().then((_) {
                   if (!mounted || _paused || gen != _animationGeneration) return;
-                  Future.delayed(const Duration(milliseconds: 2200), () {
+                  Future.delayed(const Duration(milliseconds: 2400), () {
                     if (!mounted || _paused || gen != _animationGeneration) return;
                     _daysController.forward().then((_) {
                       if (!mounted || _paused || gen != _animationGeneration) return;
-                      Future.delayed(const Duration(milliseconds: 2200), () {
+                      Future.delayed(const Duration(milliseconds: 2300), () {
                         if (!mounted || _paused || gen != _animationGeneration) return;
-                        _randomMessageController.forward();
+                        _randomMessageController.forward().then((_) {
+                          if (!mounted || _paused || gen != _animationGeneration) return;
+                          Future.delayed(const Duration(milliseconds: 2500), () {
+                            if (!mounted || _paused || gen != _animationGeneration) return;
+                            _exitSlideController.forward();
+                          });
+                        });
                       });
                     });
                   });
@@ -463,13 +516,19 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
       if (_firstMessageController.value < 1) {
         _firstMessageController.forward().then((_) {
           if (!mounted || _paused || gen != _animationGeneration) return;
-          Future.delayed(const Duration(milliseconds: 2200), () {
+          Future.delayed(const Duration(milliseconds: 2400), () {
             if (!mounted || _paused || gen != _animationGeneration) return;
             _daysController.forward().then((_) {
               if (!mounted || _paused || gen != _animationGeneration) return;
-              Future.delayed(const Duration(milliseconds: 2200), () {
+              Future.delayed(const Duration(milliseconds: 2300), () {
                 if (!mounted || _paused || gen != _animationGeneration) return;
-                _randomMessageController.forward();
+                _randomMessageController.forward().then((_) {
+                  if (!mounted || _paused || gen != _animationGeneration) return;
+                  Future.delayed(const Duration(milliseconds: 2500), () {
+                    if (!mounted || _paused || gen != _animationGeneration) return;
+                    _exitSlideController.forward();
+                  });
+                });
               });
             });
           });
@@ -477,17 +536,29 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
         return;
       }
       if (_daysController.value < 1) {
-        _daysController.forward().then((_) {
+_daysController.forward().then((_) {
+        if (!mounted || _paused || gen != _animationGeneration) return;
+        Future.delayed(const Duration(milliseconds: 2300), () {
           if (!mounted || _paused || gen != _animationGeneration) return;
-          Future.delayed(const Duration(milliseconds: 2200), () {
+          _randomMessageController.forward().then((_) {
             if (!mounted || _paused || gen != _animationGeneration) return;
-            _randomMessageController.forward();
+            Future.delayed(const Duration(milliseconds: 2500), () {
+              if (!mounted || _paused || gen != _animationGeneration) return;
+              _exitSlideController.forward();
+            });
           });
         });
-        return;
-      }
-      if (_randomMessageController.value < 1) {
-        _randomMessageController.forward();
+      });
+      return;
+    }
+    if (_randomMessageController.value < 1) {
+        _randomMessageController.forward().then((_) {
+          if (!mounted || _paused || gen != _animationGeneration) return;
+          Future.delayed(const Duration(milliseconds: 2500), () {
+            if (!mounted || _paused || gen != _animationGeneration) return;
+            _exitSlideController.forward();
+          });
+        });
       }
     }
 
@@ -514,6 +585,7 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
     _firstMessageController.dispose();
     _daysController.dispose();
     _randomMessageController.dispose();
+    _exitSlideController.dispose();
     super.dispose();
   }
 
@@ -576,10 +648,12 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
     return SizedBox(
       width: double.infinity,
       height: double.infinity,
-      child: Stack(
-        children: [
-          // Título que aparece en el centro y se desplaza hacia arriba
-          AnimatedBuilder(
+      child: SlideTransition(
+        position: _exitSlideAnimation,
+        child: Stack(
+          children: [
+            // Título que aparece en el centro y se desplaza hacia arriba
+            AnimatedBuilder(
             animation: Listenable.merge(
                 [_titleFadeAnimation, _titlePositionAnimation]),
             builder: (context, child) {
@@ -777,7 +851,8 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
               ],
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
