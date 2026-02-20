@@ -1,3 +1,3 @@
-# wra5
+# Whalyze
 
 A new Flutter project.
