@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../whatsapp_processor.dart';
 
-/// Pantalla 6 del wrapped: mapa de calor por día de la semana y franja horaria.
+/// Pantalla 5 del wrapped (índice 4): Horarios de mensajes – mapa de calor por día de la semana y franja horaria.
 /// Arriba: L M X J V S D. Izquierda: Madrugada, Mañana, Tarde, Noche.
 class WrappedSixthScreen extends StatefulWidget {
   final WhatsAppData data;

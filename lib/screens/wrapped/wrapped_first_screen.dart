@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../whatsapp_processor.dart';
 import '../../utils/participant_utils.dart';
 
+/// Pantalla 1 del wrapped (índice 0): Bienvenid@ a tu Whatsapp Wrapped (chat 1 a 1).
 class WrappedFirstScreen extends StatefulWidget {
   final WhatsAppData data;
   final int totalScreens;

@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../whatsapp_processor.dart';
 import '../../utils/participant_utils.dart';
 
-/// Pantalla 5 del wrapped: ¿Quién mueve el chat? - tabla de 3 columnas con animaciones.
+/// Pantalla 4 del wrapped (índice 3): ¿Quién mueve el chat? – tabla de 3 columnas con animaciones.
 class WrappedFifthScreen extends StatefulWidget {
   final WhatsAppData data;
   final int totalScreens;

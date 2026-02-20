@@ -205,6 +205,7 @@ String _messageForEmoji(String emoji) {
   return map[emoji] ?? 'tiene un emoji favorito';
 }
 
+/// Pantalla 3 del wrapped (índice 2): Emojis más usados (chat 1 a 1).
 class WrappedThirdScreen extends StatefulWidget {
   final WhatsAppData data;
   final int totalScreens;

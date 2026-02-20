@@ -378,17 +378,19 @@ class WhatsAppProcessor {
     }
 
     int countQuestions(String text) {
-      final lines = text.split('\n');
+      // Contar grupos de signos de interrogación consecutivos
+      // Múltiples ? seguidos cuentan como una sola pregunta
+      // Ejemplo: "Que tal??????" = 1 pregunta, "Hola ??" = 1 pregunta, "Hola?" = 1 pregunta
       int questionCount = 0;
-
-      for (final line in lines) {
-        final trimmedLine = line.trim();
-        if (trimmedLine.isNotEmpty &&
-            (trimmedLine.contains('?') || trimmedLine.contains('¿'))) {
-          questionCount++;
-        }
-      }
-
+      
+      // Buscar grupos de ? o ¿ consecutivos (pueden tener espacios entre ellos)
+      // Usamos regex para encontrar patrones como: ?+, ¿+, o combinaciones
+      final questionPattern = RegExp(r'[?¿]+');
+      final matches = questionPattern.allMatches(text);
+      
+      // Cada grupo de ? consecutivos cuenta como una pregunta
+      questionCount = matches.length;
+      
       return questionCount;
     }
 

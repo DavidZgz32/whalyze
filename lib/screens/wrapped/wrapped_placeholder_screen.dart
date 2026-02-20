@@ -4,11 +4,14 @@ import 'package:google_fonts/google_fonts.dart';
 class WrappedPlaceholderScreen extends StatelessWidget {
   final int screenNumber;
   final int totalScreens;
+  /// Si se pasa, se muestra este título en lugar de "Pantalla N".
+  final String? title;
 
   const WrappedPlaceholderScreen({
     super.key,
     required this.screenNumber,
     required this.totalScreens,
+    this.title,
   });
 
   @override
@@ -32,7 +35,8 @@ class WrappedPlaceholderScreen extends StatelessWidget {
           children: [
             const Spacer(),
             Text(
-              'Pantalla ${screenNumber + 1}',
+              title ?? 'Pantalla ${screenNumber + 1}',
+              textAlign: TextAlign.center,
               style: GoogleFonts.inter(
                 fontSize: 28,
                 fontWeight: FontWeight.w700,

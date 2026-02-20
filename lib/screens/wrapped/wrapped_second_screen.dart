@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../whatsapp_processor.dart';
 import '../../utils/participant_utils.dart';
 
+/// Pantalla 2 del wrapped (índice 1): Vamos a analizar vuestros mensajes – día/mes con más mensajes (chat 1 a 1).
 class WrappedSecondScreen extends StatefulWidget {
   final WhatsAppData data;
   final int totalScreens;
