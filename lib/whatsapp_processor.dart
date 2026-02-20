@@ -41,7 +41,11 @@ class WhatsAppData {
   // Estadísticas de palabras
   final Map<String, Map<String, int>> wordStatsByYear; // "3_letters" -> {word: count}
   final int totalUniqueWords;
-  
+  /// Por participante: longitud (4..14) -> palabra más usada de esa longitud.
+  final Map<String, Map<int, String>> topWordByLengthByParticipant;
+  /// Una sola palabra por longitud (4..14), la más usada en todo el chat.
+  final Map<int, String> topWordByLength;
+
   // Preguntas
   final int totalQuestions;
   
@@ -80,6 +84,8 @@ class WhatsAppData {
     required this.emojiStatsByParticipant,
     required this.wordStatsByYear,
     required this.totalUniqueWords,
+    required this.topWordByLengthByParticipant,
+    required this.topWordByLength,
     required this.totalQuestions,
     required this.deletedMessagesByParticipant,
     required this.editedMessagesByParticipant,
@@ -120,6 +126,10 @@ class WhatsAppData {
       ),
       'wordStatsByYear': wordStatsByYear,
       'totalUniqueWords': totalUniqueWords,
+      'topWordByLengthByParticipant': topWordByLengthByParticipant.map(
+        (p, byLen) => MapEntry(p, byLen.map((k, v) => MapEntry(k.toString(), v))),
+      ),
+      'topWordByLength': topWordByLength.map((k, v) => MapEntry(k.toString(), v)),
       'totalQuestions': totalQuestions,
       'deletedMessagesByParticipant': deletedMessagesByParticipant,
       'editedMessagesByParticipant': editedMessagesByParticipant,
@@ -170,6 +180,15 @@ class WhatsAppData {
         (key, value) => MapEntry(key as String, Map<String, int>.from(value as Map)),
       ),
       totalUniqueWords: json['totalUniqueWords'] as int? ?? 0,
+      topWordByLengthByParticipant: (json['topWordByLengthByParticipant'] as Map? ?? {}).map(
+        (p, value) => MapEntry(
+          p as String,
+          (value as Map).map((k, v) => MapEntry(int.parse(k as String), v as String)),
+        ),
+      ),
+      topWordByLength: (json['topWordByLength'] as Map? ?? {}).map(
+        (k, v) => MapEntry(int.parse(k as String), v as String),
+      ),
       totalQuestions: json['totalQuestions'] as int? ?? 0,
       deletedMessagesByParticipant: Map<String, int>.from(json['deletedMessagesByParticipant'] as Map? ?? {}),
       editedMessagesByParticipant: Map<String, int>.from(json['editedMessagesByParticipant'] as Map? ?? {}),
@@ -346,6 +365,7 @@ class WhatsAppProcessor {
 
     // Estadísticas de palabras
     final wordStats = <String, Map<String, int>>{};
+    final wordStatsByParticipant = <String, Map<String, Map<String, int>>>{};
     final uniqueWords = <String>{};
 
     // Estadísticas de emojis
@@ -520,6 +540,12 @@ class WhatsAppProcessor {
       // Remove orphaned emoji modifiers before processing
       final sanitized = stripOrphanEmojiModifiers(text);
 
+      // Quitar URLs para no contar fragmentos (ej. C0b9SjIoAel de un link de Instagram)
+      final withoutUrls = sanitized.replaceAll(
+        RegExp(r'(?:https?://|www\.)[^\s]*', caseSensitive: false),
+        ' ',
+      );
+
       // Process emojis first
       final emojiRegex = RegExp(
         r'[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1F018}-\u{1F270}]|[\u{238C}-\u{2454}]|[\u{1F000}-\u{1F02F}]|[\u{1F0A0}-\u{1F0FF}]|[\u{1F100}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F910}-\u{1F96B}]|[\u{1F980}-\u{1F9E0}]',
@@ -539,8 +565,8 @@ class WhatsAppProcessor {
         participantEmojis[emoji] = (participantEmojis[emoji] ?? 0) + 1;
       }
 
-      // Normalize and split text into words
-      final words = sanitized
+      // Normalize and split text into words (usar texto sin URLs)
+      final words = withoutUrls
           .toLowerCase()
           .replaceAll(RegExp(r'[^\p{L}\p{N}\s]', unicode: true), ' ')
           .split(RegExp(r'\s+'))
@@ -548,6 +574,7 @@ class WhatsAppProcessor {
           .where((word) =>
               word != 'http' &&
               word != 'https' &&
+              word != 'www' &&
               word != 'eliminaste' &&
               word != 'deleted')
           .toList();
@@ -561,8 +588,20 @@ class WhatsAppProcessor {
           }
           final map = wordStats[key]!;
           map[word] = (map[word] ?? 0) + 1;
-
           uniqueWords.add(word);
+        }
+        // Por participante, longitudes 4 a 14 para la pantalla de palabras
+        if (len >= 4 && len <= 14) {
+          final key = '${len}_letters';
+          if (!wordStatsByParticipant.containsKey(participant)) {
+            wordStatsByParticipant[participant] = <String, Map<String, int>>{};
+          }
+          final byParticipant = wordStatsByParticipant[participant]!;
+          if (!byParticipant.containsKey(key)) {
+            byParticipant[key] = <String, int>{};
+          }
+          final map = byParticipant[key]!;
+          map[word] = (map[word] ?? 0) + 1;
         }
       }
     }
@@ -918,10 +957,50 @@ class WhatsAppProcessor {
       final top20 = topWords.take(20).toList();
       wordStatsByYearFinal[lenKey] =
           Map.fromEntries(top20.map((e) => MapEntry(e.key, e.value)));
+    }
 
-      // Si no hay mensajes, usar primera fecha disponible
-      if (datesWithMessages.isEmpty && firstMessageUser == null) {
-        // No hay datos
+    // Top palabra por longitud por participante (4..14) para pantalla palabras más usadas
+    final topWordByLengthByParticipant = <String, Map<int, String>>{};
+    for (final participant in participantsArray) {
+      final byLen = <int, String>{};
+      final partStats = wordStatsByParticipant[participant];
+      if (partStats != null) {
+        for (int len = 14; len >= 4; len--) {
+          final key = '${len}_letters';
+          final map = partStats[key];
+          if (map != null && map.isNotEmpty) {
+            final top = map.entries.toList()
+              ..sort((a, b) => b.value.compareTo(a.value) != 0
+                  ? b.value.compareTo(a.value)
+                  : a.key.compareTo(b.key));
+            byLen[len] = top.first.key;
+          }
+        }
+      }
+      topWordByLengthByParticipant[participant] = byLen;
+    }
+
+    // Una palabra por longitud (4..14): la más usada en todo el chat
+    final topWordByLength = <int, String>{};
+    for (int len = 14; len >= 4; len--) {
+      final key = '${len}_letters';
+      final globalCount = <String, int>{};
+      for (final participant in participantsArray) {
+        final partStats = wordStatsByParticipant[participant];
+        if (partStats == null) continue;
+        final map = partStats[key];
+        if (map != null) {
+          for (final e in map.entries) {
+            globalCount[e.key] = (globalCount[e.key] ?? 0) + e.value;
+          }
+        }
+      }
+      if (globalCount.isNotEmpty) {
+        final top = globalCount.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value) != 0
+              ? b.value.compareTo(a.value)
+              : a.key.compareTo(b.key));
+        topWordByLength[len] = top.first.key;
       }
     }
 
@@ -987,6 +1066,8 @@ class WhatsAppProcessor {
       emojiStatsByParticipant: emojiStatsByParticipantFinal,
       wordStatsByYear: wordStatsByYearFinal,
       totalUniqueWords: uniqueWords.length,
+      topWordByLengthByParticipant: topWordByLengthByParticipant,
+      topWordByLength: topWordByLength,
       totalQuestions: totalQuestions,
       deletedMessagesByParticipant: deletedMessagesByParticipant,
       editedMessagesByParticipant: editedMessagesByParticipant,

@@ -127,7 +127,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  '${wrapped.participants.length} participantes • ${wrapped.totalLines} líneas',
+                                  '${wrapped.participants.length} participantes',
                                   style: GoogleFonts.poppins(
                                     color: Colors.white.withOpacity(0.9),
                                     fontSize: 14,
@@ -184,6 +184,46 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                             },
                             icon: const Icon(
                               Icons.delete_outline,
+                              color: Colors.white,
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  content: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '¿Quieres compartir?',
+                                        style: GoogleFonts.poppins(),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Próximamente',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 14,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: Text(
+                                        'Cerrar',
+                                        style: GoogleFonts.poppins(),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                            icon: const Icon(
+                              Icons.share_outlined,
                               color: Colors.white,
                             ),
                           ),

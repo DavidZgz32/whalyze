@@ -13,7 +13,13 @@ Orden y contenido de cada pantalla. El **índice** es el que se usa en código (
 | 4      | 5                  | Horarios de mensajes                  | `WrappedSixthScreen`             |
 | 5      | 6                  | Hitos del chat                        | `WrappedSeventhScreen`           |
 | 6      | 7                  | Media                                 | `WrappedEighthScreen`            |
-| 7      | 8                  | Palabras más usadas                   | `WrappedPlaceholderScreen` (título) |
+| 7      | 8                  | Palabras más usadas                   | `WrappedWordsScreen`               |
 | 8      | 9                  | Botón de volver (última pantalla)    | `WrappedPlaceholderScreen` (título) |
 
 Total: **9 pantallas**. Las duraciones por pantalla están en `wrapped_screen_durations.dart`.
+
+---
+
+## Comportamiento de pausa
+
+**En todas las pantallas del wrapped, siempre:** al pulsar *Pausar*, las animaciones de esa pantalla deben pausarse (y al pulsar *Play*, reanudarse). Cada pantalla con animaciones debe implementar `pauseAnimations()` y `resumeAnimations()` y el slideshow (`wrapped_slideshow.dart`) debe invocarlos según la pantalla actual.

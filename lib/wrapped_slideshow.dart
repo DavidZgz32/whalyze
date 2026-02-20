@@ -10,6 +10,7 @@ import 'screens/wrapped/wrapped_fifth_screen.dart';
 import 'screens/wrapped/wrapped_sixth_screen.dart';
 import 'screens/wrapped/wrapped_seventh_screen.dart';
 import 'screens/wrapped/wrapped_eighth_screen.dart';
+import 'screens/wrapped/wrapped_words_screen.dart';
 
 /// Slideshow unificado del Wrapped (chat 1 a 1). Usado al subir un chat o al abrirlo desde favoritos.
 /// Índice de las 9 pantallas: lib/WRAPPED_PANTALLAS.md
@@ -54,6 +55,8 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
       GlobalKey<WrappedSeventhScreenState>();
   final GlobalKey<WrappedEighthScreenState> _eighthScreenKey =
       GlobalKey<WrappedEighthScreenState>();
+  final GlobalKey<WrappedWordsScreenState> _wordsScreenKey =
+      GlobalKey<WrappedWordsScreenState>();
 
   @override
   void initState() {
@@ -135,6 +138,8 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
           _seventhScreenKey.currentState?.pauseAnimations();
         } else if (_currentScreen == 6) {
           _eighthScreenKey.currentState?.pauseAnimations();
+        } else if (_currentScreen == 7) {
+          _wordsScreenKey.currentState?.pauseAnimations();
         }
       });
     }
@@ -159,6 +164,10 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
       _sixthScreenKey.currentState?.pauseAnimations();
     } else if (_currentScreen == 5) {
       _seventhScreenKey.currentState?.pauseAnimations();
+    } else if (_currentScreen == 6) {
+      _eighthScreenKey.currentState?.pauseAnimations();
+    } else if (_currentScreen == 7) {
+      _wordsScreenKey.currentState?.pauseAnimations();
     }
   }
 
@@ -181,6 +190,8 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
       _seventhScreenKey.currentState?.resumeAnimations();
     } else if (_currentScreen == 6) {
       _eighthScreenKey.currentState?.resumeAnimations();
+    } else if (_currentScreen == 7) {
+      _wordsScreenKey.currentState?.resumeAnimations();
     }
   }
 
@@ -206,6 +217,8 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
       _progressController!.forward();
       if (_currentScreen == 0) {
         _firstScreenKey.currentState?.resetAnimations();
+      } else if (_currentScreen == 7) {
+        _wordsScreenKey.currentState?.resetAnimations();
       }
     }
   }
@@ -224,6 +237,8 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
       _progressController!.forward();
       if (_currentScreen == 0) {
         _firstScreenKey.currentState?.resetAnimations();
+      } else if (_currentScreen == 7) {
+        _wordsScreenKey.currentState?.resetAnimations();
       }
     }
   }
@@ -250,6 +265,8 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
       _seventhScreenKey.currentState?.resetAnimations();
     } else if (_currentScreen == 6) {
       _eighthScreenKey.currentState?.resetAnimations();
+    } else if (_currentScreen == 7) {
+      _wordsScreenKey.currentState?.resetAnimations();
     }
   }
 
@@ -332,11 +349,15 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
         totalScreens: _totalScreens,
       );
     }
-    final String? placeholderTitle = _currentScreen == 7
-        ? 'Palabras más usadas'
-        : _currentScreen == 8
-            ? 'Botón de volver'
-            : null;
+    if (_currentScreen == 7) {
+      return WrappedWordsScreen(
+        key: _wordsScreenKey,
+        data: data,
+        totalScreens: _totalScreens,
+      );
+    }
+    final String? placeholderTitle =
+        _currentScreen == 8 ? 'Botón de volver' : null;
     return WrappedPlaceholderScreen(
       screenNumber: _currentScreen,
       totalScreens: _totalScreens,
@@ -422,6 +443,37 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
                     fontSize: 14,
                     color: Colors.white.withOpacity(0.8),
                   ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: MediaQuery.of(context).padding.top +
+                  (_totalScreens * 4) +
+                  ((_totalScreens - 1) * 2) +
+                  4,
+              left: 16,
+              child: IconButton(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      content: Text(
+                        'Compartir todavía no está disponible',
+                        style: GoogleFonts.poppins(),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text('Cerrar', style: GoogleFonts.poppins()),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                iconSize: 22,
+                icon: const Icon(
+                  Icons.share_outlined,
+                  color: Colors.white,
                 ),
               ),
             ),

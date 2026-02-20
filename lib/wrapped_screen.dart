@@ -37,6 +37,16 @@ class _WrappedScreenState extends State<WrappedScreen> {
     });
   }
 
+  /// Título para favoritos: nombres de participantes hasta 8 letras, ej. "David Per - Miguelit"
+  static String _titleFromParticipants(List<String> participants) {
+    if (participants.isEmpty) return 'WHALYZE ${DateTime.now().year}';
+    const maxLetters = 8;
+    final parts = participants
+        .map((name) => name.trim().isEmpty ? '' : name.trim().length <= maxLetters ? name.trim() : name.trim().substring(0, maxLetters))
+        .where((s) => s.isNotEmpty);
+    return parts.isEmpty ? 'WHALYZE ${DateTime.now().year}' : parts.join(' - ');
+  }
+
   Future<void> _saveWrapped() async {
     if (_hasBeenSaved || _data == null) return;
 
@@ -44,7 +54,7 @@ class _WrappedScreenState extends State<WrappedScreen> {
       _hasBeenSaved = true;
       final wrapped = WrappedModel(
         id: 'wrapped_${DateTime.now().millisecondsSinceEpoch}',
-        title: 'WHALYZE ${DateTime.now().year}',
+        title: _titleFromParticipants(_data!.participants),
         createdAt: DateTime.now(),
         data: _data!.toJson(),
         participants: _data!.participants,
