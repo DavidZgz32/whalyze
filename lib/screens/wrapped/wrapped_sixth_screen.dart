@@ -237,7 +237,7 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
           if (!mounted || _paused) return;
           _hourlyBarsController.forward().then((_) {
           if (!mounted || _paused) return;
-          Future.delayed(const Duration(milliseconds: 600), () {
+          Future.delayed(const Duration(milliseconds: 1400), () {
             if (!mounted || _paused) return;
             _finalPhraseController.forward();
           });
@@ -328,13 +328,13 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
                   child: Text(
                     'Mapa de calor por dia y franja',
                     style: GoogleFonts.poppins(
-                      fontSize: 14,
+                      fontSize: 16,
                       color: Colors.white.withOpacity(0.9),
                     ),
                     textAlign: TextAlign.center,
                   ),
                 ),
-                const SizedBox(height: 7),
+                const SizedBox(height: 12),
                 Expanded(
                   child: FadeTransition(
                     opacity: _heatmapVisibleAnimation,
@@ -519,13 +519,13 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
                                 child: Text(
                                   'Mapa de calor por horas (0-24h)',
                                   style: GoogleFonts.poppins(
-                                    fontSize: 13,
+                                    fontSize: 16,
                                     color: Colors.white.withOpacity(0.9),
                                   ),
                                   textAlign: TextAlign.center,
                                 ),
                               ),
-                              const SizedBox(height: 5),
+                              const SizedBox(height: 12),
                               SizedBox(
                                 height: _hourlyBarHeight,
                                 child: AnimatedBuilder(
@@ -576,12 +576,13 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
                                       curve: Curves.easeOut),
                                 ),
                                 child: Padding(
-                                  padding: const EdgeInsets.only(top: 8),
+                                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                                   child: Text(
                                     _bandPhrases[_bandWithMostMessages][_phraseIndex],
                                     style: GoogleFonts.poppins(
-                                      fontSize: 14,
+                                      fontSize: 22,
                                       fontWeight: FontWeight.w500,
+                                      fontStyle: FontStyle.italic,
                                       color: Colors.white.withOpacity(0.95),
                                       height: 1.35,
                                     ),

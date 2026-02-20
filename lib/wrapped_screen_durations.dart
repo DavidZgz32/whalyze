@@ -15,9 +15,11 @@ class WrappedScreenDurations {
   /// Pantalla 3: ¿Quién mueve el chat?
   static const int pantalla3 = 28000;
 
-  /// Pantallas 4-7
-  static const int pantalla4 = 20000;
+  /// Pantallas 4: Mapas de calor por día de la semana y franja horaria
+  static const int pantalla4 = 22000;
+
   static const int pantalla5 = 20000;
+
   static const int pantalla6 = 60000;
   static const int pantalla7 = 20000;
 
