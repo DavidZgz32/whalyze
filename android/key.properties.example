@@ -1,6 +1,9 @@
-# Copia este archivo como key.properties y rellena con tus datos.
-# key.properties NO se sube a Git (está en .gitignore).
-storePassword=TU_CONTRASEÑA_DEL_KEYSTORE
-keyPassword=TU_CONTRASEÑA_DE_LA_CLAVE
+# Copia este archivo como key.properties y rellena los valores reales.
+# key.properties no se sube a Git (está en .gitignore).
+
+storePassword=TU_CONTRASEÑA_KEYSTORE
+keyPassword=TU_CONTRASEÑA_KEY
 keyAlias=upload
+# Si el .jks está en android/, usa: storeFile=upload-keystore.jks
+# Si está en la raíz del proyecto, usa: storeFile=../upload-keystore.jks
 storeFile=upload-keystore.jks
