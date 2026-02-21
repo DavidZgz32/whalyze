@@ -94,7 +94,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  static const MethodChannel _channel = MethodChannel('com.example.wra5/file');
+  static const MethodChannel _channel = MethodChannel('com.whalyze.wra5/file');
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   static const String _demoChatContent = '''

@@ -1,4 +1,4 @@
-package com.example.wra5
+package com.whalyze.wra5
 
 import android.content.Intent
 import android.net.Uri
@@ -10,7 +10,7 @@ import java.io.FileOutputStream
 import java.io.InputStream
 
 class MainActivity: FlutterActivity() {
-    private val CHANNEL = "com.example.wra5/file"
+    private val CHANNEL = "com.whalyze.wra5/file"
     private var sharedFilePath: String? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
