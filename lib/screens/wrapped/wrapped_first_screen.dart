@@ -260,6 +260,20 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
     });
   }
 
+  /// Trunca [text] a máximo [maxLen] caracteres sin cortar palabras.
+  /// Si el corte quedaría en medio de una palabra, se deja la palabra entera.
+  static String _truncateAtWordBoundary(String text, int maxLen) {
+    if (text.length <= maxLen) return text;
+    int endIndex = maxLen;
+    if (endIndex < text.length &&
+        text[endIndex] != ' ' &&
+        (endIndex > 0 && text[endIndex - 1] != ' ')) {
+      final nextSpace = text.indexOf(' ', endIndex);
+      endIndex = nextSpace == -1 ? text.length : nextSpace;
+    }
+    return '${text.substring(0, endIndex)}...';
+  }
+
   static const double _participantBallSize = 40.0;
 
   Widget _buildParticipantBall(String participant) {
@@ -632,12 +646,10 @@ _daysController.forward().then((_) {
       }
     }
 
-    // Limitar el primer mensaje a 150 caracteres
+    // Limitar el primer mensaje a 72 caracteres sin cortar palabras
     final limitedFirstMessage =
         firstMessageText != null && firstMessageText.isNotEmpty
-            ? (firstMessageText.length > 150
-                ? '${firstMessageText.substring(0, 150)}...'
-                : firstMessageText)
+            ? _truncateAtWordBoundary(firstMessageText, 72)
             : null;
 
     final screenHeight = MediaQuery.of(context).size.height;

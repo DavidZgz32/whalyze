@@ -335,7 +335,7 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
         rowType: _RowType.responseTime,
       ),
       _RowData(
-        title: 'Respuestas rápidas (menos de $quickMinutes min)',
+        title: 'Respuestas rápidas\n(menos de $quickMinutes min)',
         value1: '${widget.data.quickResponseCounts[p1] ?? 0}',
         value2: '${widget.data.quickResponseCounts[p2] ?? 0}',
         rowType: _RowType.quickResponses,
@@ -343,12 +343,14 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
     ];
 
     final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
     final topPadding = MediaQuery.of(context).padding.top +
         (widget.totalScreens * 4) +
         ((widget.totalScreens - 1) * 2) +
         60;
     final bottomPadding = MediaQuery.of(context).padding.bottom + 32;
     const horizontalPadding = 24.0;
+    final titleFontSize = screenWidth < 360 ? 22.0 : (screenWidth < 400 ? 25.0 : 28.0);
 
     return SizedBox(
       width: double.infinity,
@@ -376,7 +378,7 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
                     '¿Quién mueve el chat?',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
-                      fontSize: 28,
+                      fontSize: titleFontSize,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
                     ),
@@ -385,10 +387,10 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
               );
             },
           ),
-          // Contenido debajo del título
+          // Contenido debajo del título (padding reducido para más espacio)
           Padding(
             padding: EdgeInsets.only(
-              top: topPadding + 80,
+              top: topPadding + 72,
               bottom: bottomPadding,
               left: horizontalPadding,
               right: horizontalPadding,
@@ -541,8 +543,10 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
 
   TableRow _buildAnimatedTableRow(
       _RowData row, int index, String p1, String p2) {
+    final width = MediaQuery.of(context).size.width;
+    final titleFontSize = width < 360 ? 13.0 : (width < 400 ? 14.0 : 16.0);
     final titleStyle = GoogleFonts.poppins(
-      fontSize: 16,
+      fontSize: titleFontSize,
       fontWeight: FontWeight.w500,
       color: Colors.white,
       height: 1.3,
@@ -610,7 +614,8 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
             child: Text(
               row.title,
               style: titleStyle,
-              maxLines: 2,
+              maxLines: 3,
+              textAlign: TextAlign.start,
               overflow: TextOverflow.ellipsis,
             ),
           ),

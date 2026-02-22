@@ -229,7 +229,7 @@ class WrappedThirdScreenState extends State<WrappedThirdScreen>
   static const double _fontSizeStep = 2.0; // cada fila baja 2px
   static const double _namesFontSize = 22.0;
   /// Altura de referencia para calcular escala (pantalla "estándar")
-  static const double _referenceContentHeight = 520.0;
+  static const double _referenceContentHeight = 460.0; // 7 filas + nombres
 
   late AnimationController _titleFadeController;
   late AnimationController _titlePositionController;
@@ -238,6 +238,8 @@ class WrappedThirdScreenState extends State<WrappedThirdScreen>
   List<AnimationController> _lineControllers = [];
   List<Animation<double>> _lineAnimations = [];
 
+  static const int _maxEmojiRows = 7;
+
   int get _totalLines {
     final leftEmojis =
         widget.data.emojiStatsByParticipant[widget.data.participants[0]] ?? [];
@@ -245,9 +247,10 @@ class WrappedThirdScreenState extends State<WrappedThirdScreen>
         ? (widget.data.emojiStatsByParticipant[widget.data.participants[1]] ??
             [])
         : <EmojiStat>[];
-    final maxRows = leftEmojis.length > rightEmojis.length
+    final rawMax = leftEmojis.length > rightEmojis.length
         ? leftEmojis.length
         : rightEmojis.length;
+    final maxRows = rawMax > _maxEmojiRows ? _maxEmojiRows : rawMax;
     return 1 + maxRows;
   }
 
@@ -447,9 +450,11 @@ class WrappedThirdScreenState extends State<WrappedThirdScreen>
         widget.data.emojiStatsByParticipant[leftName] ?? <EmojiStat>[];
     final rightEmojis =
         widget.data.emojiStatsByParticipant[rightName] ?? <EmojiStat>[];
-    final maxRows = leftEmojis.length > rightEmojis.length
-        ? leftEmojis.length
-        : rightEmojis.length;
+    final leftDisplay = leftEmojis.take(_maxEmojiRows).toList();
+    final rightDisplay = rightEmojis.take(_maxEmojiRows).toList();
+    final maxRows = leftDisplay.length >= rightDisplay.length
+        ? leftDisplay.length
+        : rightDisplay.length;
 
     final screenHeight = MediaQuery.of(context).size.height;
     final topPadding = MediaQuery.of(context).padding.top +
@@ -459,8 +464,8 @@ class WrappedThirdScreenState extends State<WrappedThirdScreen>
     final bottomPadding = MediaQuery.of(context).padding.bottom + 32;
     final horizontalPadding = 32.0;
 
-    // Altura disponible para el contenido (debajo del título)
-    const contentTopOffset = 100.0;
+    // Altura disponible para el contenido (debajo del título); algo más arriba para que no se corte
+    const contentTopOffset = 78.0;
     final availableHeight =
         screenHeight - topPadding - contentTopOffset - bottomPadding;
     // Factor de escala para que todo quepa: mismo aspecto en todas las pantallas
@@ -502,7 +507,7 @@ class WrappedThirdScreenState extends State<WrappedThirdScreen>
             },
           ),
           Positioned(
-            top: topPadding + 100,
+            top: topPadding + contentTopOffset,
             bottom: bottomPadding,
             left: horizontalPadding,
             right: horizontalPadding,
@@ -524,9 +529,9 @@ class WrappedThirdScreenState extends State<WrappedThirdScreen>
                     final fontSize =
                         (_baseFontSize - (index * _fontSizeStep)) * scale;
                     final leftStat =
-                        index < leftEmojis.length ? leftEmojis[index] : null;
+                        index < leftDisplay.length ? leftDisplay[index] : null;
                     final rightStat =
-                        index < rightEmojis.length ? rightEmojis[index] : null;
+                        index < rightDisplay.length ? rightDisplay[index] : null;
                     final animIndex = 1 + index;
                     final opacity = animIndex < _lineAnimations.length
                         ? _lineAnimations[animIndex]
@@ -548,8 +553,8 @@ class WrappedThirdScreenState extends State<WrappedThirdScreen>
                     Builder(
                       builder: (context) {
                         final msg = _buildSummaryMessage(
-                          leftEmojis,
-                          rightEmojis,
+                          leftDisplay,
+                          rightDisplay,
                           leftName,
                           rightName,
                         );

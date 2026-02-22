@@ -206,6 +206,7 @@ class WrappedSeventhScreenState extends State<WrappedSeventhScreen>
   }
 
   void resetAnimations() {
+    _paused = false;
     _titleFadeController.reset();
     _titlePositionController.reset();
     for (final c in _statTitleControllers) {
@@ -296,12 +297,16 @@ class WrappedSeventhScreenState extends State<WrappedSeventhScreen>
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
     final topPadding = MediaQuery.of(context).padding.top +
         (widget.totalScreens * 4) +
         ((widget.totalScreens - 1) * 2) +
         60;
     final bottomPadding = MediaQuery.of(context).padding.bottom + 32;
     const horizontalPadding = 24.0;
+    final contentTop = 72.0; // algo más arriba para que no se corte por abajo
+    final scale = (screenHeight < 700 ? 0.9 : 1.0) * (screenWidth < 360 ? 0.92 : 1.0);
+    final titleFontSize = (28.0 * scale).clamp(22.0, 28.0);
 
     return SizedBox(
       width: double.infinity,
@@ -329,7 +334,7 @@ class WrappedSeventhScreenState extends State<WrappedSeventhScreen>
                     'Hitos del chat',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
-                      fontSize: 28,
+                      fontSize: titleFontSize,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
                     ),
@@ -338,10 +343,10 @@ class WrappedSeventhScreenState extends State<WrappedSeventhScreen>
               );
             },
           ),
-          // Contenido debajo del título
+          // Contenido debajo del título (padding reducido, scroll para que no se corte)
           Padding(
             padding: EdgeInsets.only(
-              top: topPadding + 80,
+              top: topPadding + contentTop,
               bottom: bottomPadding,
               left: horizontalPadding,
               right: horizontalPadding,
@@ -350,15 +355,16 @@ class WrappedSeventhScreenState extends State<WrappedSeventhScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 20),
+                  SizedBox(height: 16 * scale),
                   // Estadística 1: Racha más larga (días seguidos)
                   _buildStat(
                     index: 0,
                     title: 'Racha más larga (días seguidos) hablando',
                     value: '$_longestStreakDays días',
                     subtitle: _formatDateRange(),
+                    scale: scale,
                   ),
-                  const SizedBox(height: 40),
+                  SizedBox(height: 28 * scale),
                   // Estadística 2: Racha más intensa de mensajes seguidos
                   _buildStat(
                     index: 1,
@@ -367,16 +373,18 @@ class WrappedSeventhScreenState extends State<WrappedSeventhScreen>
                     subtitle: widget.data.mostConsecutiveUser != null
                         ? '${widget.data.mostConsecutiveUser} - ${_formatConsecutiveDate()}'
                         : _formatConsecutiveDate(),
+                    scale: scale,
                   ),
-                  const SizedBox(height: 40),
+                  SizedBox(height: 28 * scale),
                   // Estadística 3: Total de preguntas
                   _buildStat(
                     index: 2,
                     title: 'Total de preguntas',
                     value: '${widget.data.totalQuestions}',
                     subtitle: '',
+                    scale: scale,
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 20 * scale),
                 ],
               ),
             ),
@@ -391,20 +399,21 @@ class WrappedSeventhScreenState extends State<WrappedSeventhScreen>
     required String title,
     required String value,
     required String subtitle,
+    double scale = 1.0,
   }) {
     final titleStyle = GoogleFonts.poppins(
-      fontSize: 18,
+      fontSize: (18 * scale).clamp(15.0, 18.0),
       fontWeight: FontWeight.w600,
       color: Colors.white,
       height: 1.3,
     );
     final valueStyle = GoogleFonts.poppins(
-      fontSize: 32,
+      fontSize: (32 * scale).clamp(26.0, 32.0),
       fontWeight: FontWeight.w700,
       color: Colors.white,
     );
     final subtitleStyle = GoogleFonts.poppins(
-      fontSize: 14,
+      fontSize: (14 * scale).clamp(12.0, 14.0),
       fontWeight: FontWeight.w400,
       color: Colors.white.withOpacity(0.85),
     );

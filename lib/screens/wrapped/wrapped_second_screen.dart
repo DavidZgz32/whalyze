@@ -42,6 +42,7 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
   late Animation<double> _monthDateAnimation;
   late Animation<double> _monthPhraseAnimation;
   bool _animationsInitialized = false;
+  bool _paused = false;
 
   @override
   void initState() {
@@ -185,8 +186,11 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
   void _startAnimations() {
     // 1. Aparecer título en el centro (más rápido)
     _titleFadeController.forward().then((_) {
+      if (!mounted || _paused) return;
       Future.delayed(const Duration(milliseconds: 1200), () {
+        if (!mounted || _paused) return;
         _titlePositionController.forward().then((_) {
+          if (!mounted || _paused) return;
           _animateParticipantsSequentially();
         });
       });
@@ -195,33 +199,42 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
 
   void _animateParticipantsSequentially() {
     Future<void> animateNext(int index) async {
+      if (!mounted || _paused) return;
       if (index < _participantControllers.length) {
         await Future.delayed(const Duration(milliseconds: 500));
+        if (!mounted || _paused) return;
         _participantControllers[index].forward();
         await animateNext(index + 1);
       } else {
         await Future.delayed(const Duration(milliseconds: 1200));
+        if (!mounted || _paused) return;
         _barController.forward();
 
         await Future.delayed(const Duration(milliseconds: 1500));
+        if (!mounted || _paused) return;
         _barMessageController.forward();
 
         await Future.delayed(const Duration(milliseconds: 1200));
+        if (!mounted || _paused) return;
         if (widget.data.dayWithMostMessages != null) {
           _dayTitleController.forward();
           await Future.delayed(const Duration(milliseconds: 1500));
+          if (!mounted || _paused) return;
           _dayDateController.forward();
         }
 
         await Future.delayed(const Duration(milliseconds: 2000));
+        if (!mounted || _paused) return;
         if (widget.data.monthWithMostMessages != null) {
           _monthTitleController.forward();
           await Future.delayed(const Duration(milliseconds: 1500));
+          if (!mounted || _paused) return;
           _monthDateController.forward();
           final monthNum =
               _getMonthKeyMonthNumber(widget.data.monthWithMostMessages!);
           if (monthNum != null && _getMonthMessage(monthNum).isNotEmpty) {
             await Future.delayed(const Duration(milliseconds: 2000));
+            if (!mounted || _paused) return;
             _monthPhraseController.forward();
           }
         }
@@ -249,6 +262,7 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
   }
 
   void pauseAnimations() {
+    _paused = true;
     _titleFadeController.stop(canceled: false);
     _titlePositionController.stop(canceled: false);
     for (final c in _participantControllers) {
@@ -264,6 +278,7 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
   }
 
   void resumeAnimations() {
+    _paused = false;
     // Solo reanudar los controladores que estaban en progreso (evita "todo de golpe")
     void forwardIfInProgress(AnimationController c) {
       if (c.value > 0 && c.value < 1) {
@@ -517,90 +532,120 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
                       percentages[sortedParticipants[1]] ?? 0.0,
                     ),
                   const SizedBox(height: 40),
-                  // Día con más mensajes (título y fecha uno tras otro)
+                  // Día con más mensajes (recuadro oculto hasta que cargue la animación)
                   if (widget.data.dayWithMostMessages != null &&
                       widget.data.dayWithMostMessagesCount > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 24.0),
-                      child: Column(
-                        children: [
-                          FadeTransition(
-                            opacity: _dayTitleAnimation,
-                            child: Text(
-                              'DÍA CON MÁS MENSAJES',
-                              style: GoogleFonts.poppins(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white.withOpacity(0.9),
-                              ),
-                            ),
+                    FadeTransition(
+                      opacity: _dayTitleAnimation,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 24.0),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.22),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          const SizedBox(height: 4),
-                          FadeTransition(
-                            opacity: _dayDateAnimation,
-                            child: Text(
-                              '${_formatDate(widget.data.dayWithMostMessages!)} - ${_formatNumber(widget.data.dayWithMostMessagesCount)} mensajes',
-                              style: GoogleFonts.poppins(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w400,
-                                color: Colors.white.withOpacity(0.8),
+                          child: Column(
+                            children: [
+                              FadeTransition(
+                                opacity: _dayTitleAnimation,
+                                child: Text(
+                                  'DÍA CON MÁS MENSAJES',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white.withOpacity(0.95),
+                                  ),
+                                ),
                               ),
-                              textAlign: TextAlign.center,
-                            ),
+                              const SizedBox(height: 6),
+                              FadeTransition(
+                                opacity: _dayDateAnimation,
+                                child: Text(
+                                  '${_formatDate(widget.data.dayWithMostMessages!)} - ${_formatNumber(widget.data.dayWithMostMessagesCount)} mensajes',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w400,
+                                    color: Colors.white.withOpacity(0.9),
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
-                  // El mes más movido (título, fecha y mensaje uno tras otro)
+                  // El mes más movido (recuadro oculto hasta que cargue la animación; frase fuera)
                   if (widget.data.monthWithMostMessages != null &&
                       widget.data.monthWithMostMessagesCount > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16.0),
-                      child: Column(
-                        children: [
-                          FadeTransition(
-                            opacity: _monthTitleAnimation,
-                            child: Text(
-                              'EL MES MÁS MOVIDO',
-                              style: GoogleFonts.poppins(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white.withOpacity(0.9),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        FadeTransition(
+                          opacity: _monthTitleAnimation,
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 16.0),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 14),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.22),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Column(
+                                children: [
+                                  FadeTransition(
+                                    opacity: _monthTitleAnimation,
+                                    child: Text(
+                                      'EL MES MÁS MOVIDO',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white.withOpacity(0.95),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  FadeTransition(
+                                    opacity: _monthDateAnimation,
+                                    child: Text(
+                                      '${_formatMonth(widget.data.monthWithMostMessages!)} - ${_formatNumber(widget.data.monthWithMostMessagesCount)} mensajes',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w400,
+                                        color: Colors.white.withOpacity(0.9),
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          FadeTransition(
-                            opacity: _monthDateAnimation,
-                            child: Text(
-                              '${_formatMonth(widget.data.monthWithMostMessages!)} - ${_formatNumber(widget.data.monthWithMostMessagesCount)} mensajes',
-                              style: GoogleFonts.poppins(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w400,
-                                color: Colors.white.withOpacity(0.8),
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                          if (_getMonthKeyMonthNumber(
-                                  widget.data.monthWithMostMessages!) !=
-                              null) ...[
-                            const SizedBox(height: 24),
-                            FadeTransition(
+                        ),
+                        if (_getMonthKeyMonthNumber(
+                                widget.data.monthWithMostMessages!) !=
+                            null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 16.0),
+                            child: FadeTransition(
                               opacity: _monthPhraseAnimation,
                               child: Text(
                                 '"${_getMonthMessage(_getMonthKeyMonthNumber(widget.data.monthWithMostMessages!)!)}"',
                                 style: GoogleFonts.poppins(
                                   fontSize: 14,
                                   fontStyle: FontStyle.italic,
-                                  color: Colors.white.withOpacity(0.85),
+                                  color: Colors.white.withOpacity(0.9),
                                 ),
                                 textAlign: TextAlign.center,
                               ),
                             ),
-                          ],
-                        ],
-                      ),
+                          ),
+                      ],
                     ),
                 ],
               ),
@@ -741,6 +786,7 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
   }
 
   void resetAnimations() {
+    _paused = false;
     _titleFadeController.reset();
     _titlePositionController.reset();
     for (final c in _participantControllers) c.reset();

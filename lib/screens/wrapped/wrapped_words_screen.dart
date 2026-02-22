@@ -174,10 +174,11 @@ class WrappedWordsScreenState extends State<WrappedWordsScreen>
                 child: Opacity(
                   opacity: _titleFadeAnimation.value,
                   child: Text(
-                    'Palabras más usadas',
+                    'Palabras más usadas por número de letras',
                     textAlign: TextAlign.center,
+                    maxLines: 2,
                     style: GoogleFonts.inter(
-                      fontSize: 28,
+                      fontSize: MediaQuery.of(context).size.width < 380 ? 22 : 26,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
                     ),
