@@ -56,6 +56,7 @@ class WhatsAppData {
   final Map<String, int> locationsByParticipant;
   final Map<String, int> contactsByParticipant;
   final Map<String, int> oneTimePhotosByParticipant;
+  final Map<String, int> sharedUrlsByParticipant;
 
   WhatsAppData({
     required this.participants,
@@ -93,6 +94,7 @@ class WhatsAppData {
     required this.locationsByParticipant,
     required this.contactsByParticipant,
     required this.oneTimePhotosByParticipant,
+    required this.sharedUrlsByParticipant,
   });
 
   /// Convierte los datos a un JSON completo
@@ -137,6 +139,7 @@ class WhatsAppData {
       'locationsByParticipant': locationsByParticipant,
       'contactsByParticipant': contactsByParticipant,
       'oneTimePhotosByParticipant': oneTimePhotosByParticipant,
+      'sharedUrlsByParticipant': sharedUrlsByParticipant,
     };
   }
 
@@ -196,6 +199,7 @@ class WhatsAppData {
       locationsByParticipant: Map<String, int>.from(json['locationsByParticipant'] as Map? ?? {}),
       contactsByParticipant: Map<String, int>.from(json['contactsByParticipant'] as Map? ?? {}),
       oneTimePhotosByParticipant: Map<String, int>.from(json['oneTimePhotosByParticipant'] as Map? ?? {}),
+      sharedUrlsByParticipant: Map<String, int>.from(json['sharedUrlsByParticipant'] as Map? ?? {}),
     );
   }
 }
@@ -378,6 +382,7 @@ class WhatsAppProcessor {
     final locationsByParticipant = <String, int>{};
     final contactsByParticipant = <String, int>{};
     final oneTimePhotosByParticipant = <String, int>{};
+    final sharedUrlsByParticipant = <String, int>{};
 
     // Identificación del subidor
     String? uploaderParticipant;
@@ -395,6 +400,26 @@ class WhatsAppProcessor {
       } else {
         return '${mins}:${secs.toString().padLeft(2, '0')}';
       }
+    }
+
+    /// Cuenta URLs en un texto: https?://, www., y dominios tipo marca.com
+    int countUrlsInText(String text) {
+      if (text.isEmpty) return 0;
+      int n = 0;
+      // 1. http(s) URLs (evitar comillas en la clase de caracteres para no cerrar la cadena)
+      final httpRe = RegExp(r'https?://[^\s<>"\x27]+', caseSensitive: false);
+      n += httpRe.allMatches(text).length;
+      final withoutHttp = text.replaceAll(httpRe, ' ');
+      // 2. www. (sin http delante)
+      final wwwRe = RegExp(r'www\.[^\s<>"\x27]+', caseSensitive: false);
+      n += wwwRe.allMatches(withoutHttp).length;
+      final withoutWww = withoutHttp.replaceAll(wwwRe, ' ');
+      // 3. Dominio tipo palabra.tld o palabra.palabra.tld (ej. marca.com, docs.google.com, bit.ly)
+      final domainRe = RegExp(
+        r'\b[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.(?:[a-zA-Z]{2,})(?:\.[a-zA-Z]{2,})*\b',
+      );
+      n += domainRe.allMatches(withoutWww).length;
+      return n;
     }
 
     int countQuestions(String text) {
@@ -486,6 +511,13 @@ class WhatsAppProcessor {
       if (trimmedText == 'null' || trimmedText == '') {
         oneTimePhotosByParticipant[participant] =
             (oneTimePhotosByParticipant[participant] ?? 0) + 1;
+      }
+
+      // URLs compartidas: https, www, o dominio tipo marca.com
+      final urlCount = countUrlsInText(trimmedText);
+      if (urlCount > 0) {
+        sharedUrlsByParticipant[participant] =
+            (sharedUrlsByParticipant[participant] ?? 0) + urlCount;
       }
     }
 
@@ -1075,6 +1107,7 @@ class WhatsAppProcessor {
       locationsByParticipant: locationsByParticipant,
       contactsByParticipant: contactsByParticipant,
       oneTimePhotosByParticipant: oneTimePhotosByParticipant,
+      sharedUrlsByParticipant: sharedUrlsByParticipant,
     );
   }
 }

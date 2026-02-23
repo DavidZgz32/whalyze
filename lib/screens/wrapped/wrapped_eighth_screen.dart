@@ -278,6 +278,8 @@ class WrappedEighthScreenState extends State<WrappedEighthScreen>
     final multi2 = widget.data.multimediaByParticipant[p2] ?? 0;
     final oneTime1 = widget.data.oneTimePhotosByParticipant[p1] ?? 0;
     final oneTime2 = widget.data.oneTimePhotosByParticipant[p2] ?? 0;
+    final urls1 = widget.data.sharedUrlsByParticipant[p1] ?? 0;
+    final urls2 = widget.data.sharedUrlsByParticipant[p2] ?? 0;
 
     final dataRows = <_MediaRowData>[
       _MediaRowData(
@@ -291,9 +293,9 @@ class WrappedEighthScreenState extends State<WrappedEighthScreen>
         value2: '$oneTime2',
       ),
       _MediaRowData(
-        title: 'Total media',
-        value1: '${multi1 + oneTime1}',
-        value2: '${multi2 + oneTime2}',
+        title: 'URLs compartidas',
+        value1: '$urls1',
+        value2: '$urls2',
       ),
     ];
 

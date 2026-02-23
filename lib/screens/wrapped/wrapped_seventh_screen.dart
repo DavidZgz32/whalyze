@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../whatsapp_processor.dart';
 
-/// Pantalla 6 del wrapped (índice 5): Hitos del chat
+/// Pantalla 6 del wrapped (índice 5): Hitos del chat – 2 columnas (título - dato), fecha abajo.
 class WrappedSeventhScreen extends StatefulWidget {
   final WhatsAppData data;
   final int totalScreens;
@@ -21,15 +21,17 @@ class WrappedSeventhScreenState extends State<WrappedSeventhScreen>
     with TickerProviderStateMixin {
   late AnimationController _titleFadeController;
   late AnimationController _titlePositionController;
-  late List<AnimationController> _statTitleControllers;
-  late List<AnimationController> _statValueControllers;
-  late List<AnimationController> _statSubtitleControllers;
+  late List<AnimationController> _rowTitleControllers;
+  late List<AnimationController> _rowValue1Controllers;
+  late List<AnimationController> _rowValue2Controllers;
 
   late Animation<double> _titleFadeAnimation;
   late Animation<double> _titlePositionAnimation;
-  late List<Animation<double>> _statTitleAnimations;
-  late List<Animation<double>> _statValueAnimations;
-  late List<Animation<double>> _statSubtitleAnimations;
+  late List<Animation<double>> _rowTitleAnimations;
+  late List<Animation<double>> _rowValue1Animations;
+  late List<Animation<double>> _rowValue2Animations;
+
+  static const Color _numberBadgeBg = Color(0xFF00B872);
 
   bool _paused = false;
 
@@ -67,22 +69,18 @@ class WrappedSeventhScreenState extends State<WrappedSeventhScreen>
         final diffDays = currentDateObj.difference(lastDateObj).inDays;
 
         if (diffDays == 1) {
-          // Día consecutivo, continuar la racha
           currentStreak++;
         } else {
-          // Nueva racha - verificar si la racha anterior es la más larga
           if (currentStreak > longestStreak) {
             longestStreak = currentStreak;
             _longestStreakStartDate = currentStreakStart;
             _longestStreakEndDate = lastDate;
           }
-          // Iniciar nueva racha
           currentStreak = 1;
           currentStreakStart = date;
         }
       }
 
-      // Verificar si la racha actual es la más larga
       if (currentStreak > longestStreak) {
         longestStreak = currentStreak;
         _longestStreakStartDate = currentStreakStart;
@@ -113,39 +111,38 @@ class WrappedSeventhScreenState extends State<WrappedSeventhScreen>
           parent: _titlePositionController, curve: Curves.easeInOut),
     );
 
-    // 3 estadísticas: título, valor, subtítulo
-    const statCount = 3;
-    _statTitleControllers = List.generate(
-      statCount,
+    const rowCount = 4;
+    _rowTitleControllers = List.generate(
+      rowCount,
       (_) => AnimationController(
         vsync: this,
         duration: const Duration(milliseconds: 400),
       ),
     );
-    _statValueControllers = List.generate(
-      statCount,
+    _rowValue1Controllers = List.generate(
+      rowCount,
       (_) => AnimationController(
         vsync: this,
         duration: const Duration(milliseconds: 400),
       ),
     );
-    _statSubtitleControllers = List.generate(
-      statCount,
+    _rowValue2Controllers = List.generate(
+      rowCount,
       (_) => AnimationController(
         vsync: this,
         duration: const Duration(milliseconds: 400),
       ),
     );
 
-    _statTitleAnimations = _statTitleControllers
+    _rowTitleAnimations = _rowTitleControllers
         .map((c) => Tween<double>(begin: 0.0, end: 1.0)
             .animate(CurvedAnimation(parent: c, curve: Curves.easeOut)))
         .toList();
-    _statValueAnimations = _statValueControllers
+    _rowValue1Animations = _rowValue1Controllers
         .map((c) => Tween<double>(begin: 0.0, end: 1.0)
             .animate(CurvedAnimation(parent: c, curve: Curves.easeOut)))
         .toList();
-    _statSubtitleAnimations = _statSubtitleControllers
+    _rowValue2Animations = _rowValue2Controllers
         .map((c) => Tween<double>(begin: 0.0, end: 1.0)
             .animate(CurvedAnimation(parent: c, curve: Curves.easeOut)))
         .toList();
@@ -153,37 +150,53 @@ class WrappedSeventhScreenState extends State<WrappedSeventhScreen>
     _startAnimations();
   }
 
-  void _startAnimations() {
-    _paused = false;
-    // 1. Título en el centro, luego se desplaza arriba
-    _titleFadeController.forward().then((_) {
-      Future.delayed(const Duration(milliseconds: 1200), () {
-        if (!mounted || _paused) return;
-        _titlePositionController.forward().then((_) {
-          if (!mounted || _paused) return;
-          Future.delayed(const Duration(milliseconds: 900), () {
-            if (!mounted || _paused) return;
-            _animateStatsSequentially();
-          });
-        });
-      });
-    });
+  /// Espera hasta que se llame a resume (o el widget no esté montado).
+  Future<void> _waitUntilUnpaused() async {
+    while (_paused && mounted) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
   }
 
-  Future<void> _animateStatsSequentially() async {
-    for (int i = 0; i < 3; i++) {
-      if (!mounted || _paused) return;
-      // Título de la estadística
-      _statTitleControllers[i].forward();
+  Future<void> _startAnimations() async {
+    _paused = false;
+    _titleFadeController.forward();
+    await Future.delayed(const Duration(milliseconds: 1200));
+    if (!mounted) return;
+    await _waitUntilUnpaused();
+    if (!mounted) return;
+    _titlePositionController.forward();
+    await Future.delayed(const Duration(milliseconds: 1000));
+    if (!mounted) return;
+    await _waitUntilUnpaused();
+    if (!mounted) return;
+    await Future.delayed(const Duration(milliseconds: 400));
+    if (!mounted) return;
+    await _waitUntilUnpaused();
+    if (!mounted) return;
+    await _animateRowsSequentially();
+  }
+
+  Future<void> _animateRowsSequentially() async {
+    await Future.delayed(const Duration(milliseconds: 900));
+    if (!mounted) return;
+    await _waitUntilUnpaused();
+    if (!mounted) return;
+    for (int i = 0; i < 4; i++) {
+      if (!mounted) return;
+      await _waitUntilUnpaused();
+      if (!mounted) return;
+      _rowTitleControllers[i].forward();
       await Future.delayed(const Duration(milliseconds: 2000));
-      if (!mounted || _paused) return;
-      // Valor de la estadística
-      _statValueControllers[i].forward();
+      if (!mounted) return;
+      await _waitUntilUnpaused();
+      if (!mounted) return;
+      _rowValue1Controllers[i].forward();
       await Future.delayed(const Duration(milliseconds: 1200));
-      if (!mounted || _paused) return;
-      // Subtítulo (fecha o información adicional)
-      _statSubtitleControllers[i].forward();
-      if (i < 2) {
+      if (!mounted) return;
+      await _waitUntilUnpaused();
+      if (!mounted) return;
+      _rowValue2Controllers[i].forward();
+      if (i < 3) {
         await Future.delayed(const Duration(milliseconds: 1200));
       }
     }
@@ -193,13 +206,13 @@ class WrappedSeventhScreenState extends State<WrappedSeventhScreen>
   void dispose() {
     _titleFadeController.dispose();
     _titlePositionController.dispose();
-    for (final c in _statTitleControllers) {
+    for (final c in _rowTitleControllers) {
       c.dispose();
     }
-    for (final c in _statValueControllers) {
+    for (final c in _rowValue1Controllers) {
       c.dispose();
     }
-    for (final c in _statSubtitleControllers) {
+    for (final c in _rowValue2Controllers) {
       c.dispose();
     }
     super.dispose();
@@ -209,13 +222,13 @@ class WrappedSeventhScreenState extends State<WrappedSeventhScreen>
     _paused = false;
     _titleFadeController.reset();
     _titlePositionController.reset();
-    for (final c in _statTitleControllers) {
+    for (final c in _rowTitleControllers) {
       c.reset();
     }
-    for (final c in _statValueControllers) {
+    for (final c in _rowValue1Controllers) {
       c.reset();
     }
-    for (final c in _statSubtitleControllers) {
+    for (final c in _rowValue2Controllers) {
       c.reset();
     }
     _startAnimations();
@@ -225,13 +238,13 @@ class WrappedSeventhScreenState extends State<WrappedSeventhScreen>
     _paused = true;
     _titleFadeController.stop(canceled: false);
     _titlePositionController.stop(canceled: false);
-    for (final c in _statTitleControllers) {
+    for (final c in _rowTitleControllers) {
       c.stop(canceled: false);
     }
-    for (final c in _statValueControllers) {
+    for (final c in _rowValue1Controllers) {
       c.stop(canceled: false);
     }
-    for (final c in _statSubtitleControllers) {
+    for (final c in _rowValue2Controllers) {
       c.stop(canceled: false);
     }
   }
@@ -241,16 +254,15 @@ class WrappedSeventhScreenState extends State<WrappedSeventhScreen>
     void forwardIfInProgress(AnimationController c) {
       if (c.value > 0 && c.value < 1) c.forward();
     }
-
     forwardIfInProgress(_titleFadeController);
     forwardIfInProgress(_titlePositionController);
-    for (final c in _statTitleControllers) {
+    for (final c in _rowTitleControllers) {
       forwardIfInProgress(c);
     }
-    for (final c in _statValueControllers) {
+    for (final c in _rowValue1Controllers) {
       forwardIfInProgress(c);
     }
-    for (final c in _statSubtitleControllers) {
+    for (final c in _rowValue2Controllers) {
       forwardIfInProgress(c);
     }
   }
@@ -259,18 +271,8 @@ class WrappedSeventhScreenState extends State<WrappedSeventhScreen>
     try {
       final date = DateTime.parse(isoDate);
       final months = [
-        'enero',
-        'febrero',
-        'marzo',
-        'abril',
-        'mayo',
-        'junio',
-        'julio',
-        'agosto',
-        'septiembre',
-        'octubre',
-        'noviembre',
-        'diciembre'
+        'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+        'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
       ];
       return '${date.day} de ${months[date.month - 1]} de ${date.year}';
     } catch (e) {
@@ -296,6 +298,42 @@ class WrappedSeventhScreenState extends State<WrappedSeventhScreen>
 
   @override
   Widget build(BuildContext context) {
+    final participants = widget.data.participants;
+    final p1 = participants.isNotEmpty ? participants[0] : '—';
+
+    final value2Row1 = _formatDateRange();
+    final value2Row2 = widget.data.mostConsecutiveUser != null
+        ? '${widget.data.mostConsecutiveUser} - ${_formatConsecutiveDate()}'
+        : _formatConsecutiveDate();
+    final totalMultimedia = widget.data.multimediaByParticipant.values.fold<int>(
+        0, (sum, count) => sum + count);
+    final multimediaExampleUser = p1 != '—' ? p1 : 'Usuario';
+    final value2Row4 = 'Se mide así:\n23/2/26, 22:10 - $multimediaExampleUser: <Multimedia omitido>';
+    final dataRows = <_RowData>[
+      _RowData(
+        title: 'Racha más larga días hablando',
+        value1: '$_longestStreakDays\ndías',
+        value2: value2Row1,
+        value1TwoLines: true,
+      ),
+      _RowData(
+        title: 'Racha más intensa de mensajes seguidos',
+        value1: '${widget.data.mostConsecutiveMessages}\nmensajes',
+        value2: value2Row2,
+        value1TwoLines: true,
+      ),
+      _RowData(
+        title: 'Total de preguntas realizadas',
+        value1: '${widget.data.totalQuestions}',
+        value2: '',
+      ),
+      _RowData(
+        title: 'Multimedia, stickers y audios compartidos:',
+        value1: '$totalMultimedia',
+        value2: value2Row4,
+      ),
+    ];
+
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
     final topPadding = MediaQuery.of(context).padding.top +
@@ -304,16 +342,13 @@ class WrappedSeventhScreenState extends State<WrappedSeventhScreen>
         60;
     final bottomPadding = MediaQuery.of(context).padding.bottom + 32;
     const horizontalPadding = 24.0;
-    final contentTop = 72.0; // algo más arriba para que no se corte por abajo
-    final scale = (screenHeight < 700 ? 0.9 : 1.0) * (screenWidth < 360 ? 0.92 : 1.0);
-    final titleFontSize = (28.0 * scale).clamp(22.0, 28.0);
+    final titleFontSize = (28.0 * (screenHeight < 700 ? 0.9 : 1.0) * (screenWidth < 360 ? 0.92 : 1.0)).clamp(22.0, 28.0);
 
     return SizedBox(
       width: double.infinity,
       height: double.infinity,
       child: Stack(
         children: [
-          // Título que aparece en el centro y se desplaza hacia arriba
           AnimatedBuilder(
             animation: Listenable.merge(
                 [_titleFadeAnimation, _titlePositionAnimation]),
@@ -343,49 +378,37 @@ class WrappedSeventhScreenState extends State<WrappedSeventhScreen>
               );
             },
           ),
-          // Contenido debajo del título (padding reducido, scroll para que no se corte)
           Padding(
             padding: EdgeInsets.only(
-              top: topPadding + contentTop,
+              top: topPadding + 72,
               bottom: bottomPadding,
               left: horizontalPadding,
               right: horizontalPadding,
             ),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(height: 16 * scale),
-                  // Estadística 1: Racha más larga (días seguidos)
-                  _buildStat(
-                    index: 0,
-                    title: 'Racha más larga (días seguidos) hablando',
-                    value: '$_longestStreakDays días',
-                    subtitle: _formatDateRange(),
-                    scale: scale,
-                  ),
-                  SizedBox(height: 28 * scale),
-                  // Estadística 2: Racha más intensa de mensajes seguidos
-                  _buildStat(
-                    index: 1,
-                    title: 'Racha más intensa de mensajes seguidos',
-                    value: '${widget.data.mostConsecutiveMessages} mensajes',
-                    subtitle: widget.data.mostConsecutiveUser != null
-                        ? '${widget.data.mostConsecutiveUser} - ${_formatConsecutiveDate()}'
-                        : _formatConsecutiveDate(),
-                    scale: scale,
-                  ),
-                  SizedBox(height: 28 * scale),
-                  // Estadística 3: Total de preguntas
-                  _buildStat(
-                    index: 2,
-                    title: 'Total de preguntas',
-                    value: '${widget.data.totalQuestions}',
-                    subtitle: '',
-                    scale: scale,
-                  ),
-                  SizedBox(height: 20 * scale),
-                ],
+            child: Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (int i = 0; i < dataRows.length; i++) ...[
+                      Table(
+                        columnWidths: const {
+                          0: FlexColumnWidth(2),
+                          1: FlexColumnWidth(1.2),
+                        },
+                        defaultVerticalAlignment:
+                            TableCellVerticalAlignment.middle,
+                        children: [
+                          _buildTitleValueRow(dataRows[i], i),
+                        ],
+                      ),
+                      if (dataRows[i].value2.isNotEmpty)
+                        _buildDateRow(dataRows[i].value2, i),
+                    ],
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
             ),
           ),
@@ -394,73 +417,117 @@ class WrappedSeventhScreenState extends State<WrappedSeventhScreen>
     );
   }
 
-  Widget _buildStat({
-    required int index,
-    required String title,
-    required String value,
-    required String subtitle,
-    double scale = 1.0,
-  }) {
+  TableRow _buildTitleValueRow(_RowData row, int index) {
+    final width = MediaQuery.of(context).size.width;
+    final titleFontSize = width < 360 ? 13.0 : (width < 400 ? 14.0 : 16.0);
     final titleStyle = GoogleFonts.poppins(
-      fontSize: (18 * scale).clamp(15.0, 18.0),
-      fontWeight: FontWeight.w600,
+      fontSize: titleFontSize,
+      fontWeight: FontWeight.w500,
       color: Colors.white,
       height: 1.3,
     );
     final valueStyle = GoogleFonts.poppins(
-      fontSize: (32 * scale).clamp(26.0, 32.0),
-      fontWeight: FontWeight.w700,
+      fontSize: 14,
+      fontWeight: FontWeight.w500,
       color: Colors.white,
     );
-    final subtitleStyle = GoogleFonts.poppins(
-      fontSize: (14 * scale).clamp(12.0, 14.0),
-      fontWeight: FontWeight.w400,
-      color: Colors.white.withOpacity(0.85),
-    );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
+    return TableRow(
       children: [
-        FadeTransition(
-          opacity: _statTitleAnimations[index],
-          child: Text(
-            title,
-            style: titleStyle,
-            textAlign: TextAlign.center,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        const SizedBox(height: 16),
-        FadeTransition(
-          opacity: _statValueAnimations[index],
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF00B872).withOpacity(0.9),
-              borderRadius: BorderRadius.circular(20),
-            ),
+        Padding(
+          padding: const EdgeInsets.only(right: 12, top: 14, bottom: 8),
+          child: FadeTransition(
+            opacity: _rowTitleAnimations[index],
             child: Text(
-              value,
-              style: valueStyle,
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-        if (subtitle.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          FadeTransition(
-            opacity: _statSubtitleAnimations[index],
-            child: Text(
-              subtitle,
-              style: subtitleStyle,
-              textAlign: TextAlign.center,
-              maxLines: 2,
+              row.title,
+              style: titleStyle,
+              maxLines: 4,
+              textAlign: TextAlign.start,
               overflow: TextOverflow.ellipsis,
             ),
           ),
-        ],
+        ),
+        TableCell(
+          verticalAlignment: TableCellVerticalAlignment.middle,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Center(
+              child: FadeTransition(
+                opacity: _rowValue1Animations[index],
+                child: _buildValueWidget(
+                  row.value1,
+                  valueStyle,
+                  twoLines: row.value1TwoLines,
+                ),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
+
+  /// Fila de fecha a ancho completo (una sola columna de lado a lado).
+  Widget _buildDateRow(String dateText, int index) {
+    final dateStyle = GoogleFonts.poppins(
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+      color: Colors.white.withOpacity(0.9),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: FadeTransition(
+        opacity: _rowValue2Animations[index],
+        child: SizedBox(
+          width: double.infinity,
+          child: Text(
+            dateText,
+            style: dateStyle,
+            textAlign: TextAlign.start,
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildValueWidget(String value, TextStyle style, {bool twoLines = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: _numberBadgeBg.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: twoLines && value.contains('\n')
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: value.split('\n').map((line) => Text(
+                line,
+                style: style,
+                textAlign: TextAlign.center,
+              )).toList(),
+            )
+          : Text(
+              value,
+              style: style,
+              textAlign: TextAlign.center,
+            ),
+    );
+  }
+}
+
+class _RowData {
+  final String title;
+  final String value1;
+  final String value2;
+  final bool value1TwoLines;
+
+  _RowData({
+    required this.title,
+    required this.value1,
+    required this.value2,
+    this.value1TwoLines = false,
+  });
 }

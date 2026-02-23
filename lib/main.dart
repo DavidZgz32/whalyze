@@ -13,6 +13,9 @@ import 'onboarding_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
   await WrappedStorage.init();
   runApp(const MyApp());
 }
@@ -546,7 +549,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.info_outline),
+            icon: const Icon(Icons.menu),
             color: Colors.black,
             onPressed: () => _scaffoldKey.currentState?.openDrawer(),
           ),
