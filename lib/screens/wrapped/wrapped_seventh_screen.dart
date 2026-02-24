@@ -378,37 +378,33 @@ class WrappedSeventhScreenState extends State<WrappedSeventhScreen>
               );
             },
           ),
-          Padding(
-            padding: EdgeInsets.only(
-              top: topPadding + 72,
-              bottom: bottomPadding,
-              left: horizontalPadding,
-              right: horizontalPadding,
-            ),
-            child: Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (int i = 0; i < dataRows.length; i++) ...[
-                      Table(
-                        columnWidths: const {
-                          0: FlexColumnWidth(2),
-                          1: FlexColumnWidth(1.2),
-                        },
-                        defaultVerticalAlignment:
-                            TableCellVerticalAlignment.middle,
-                        children: [
-                          _buildTitleValueRow(dataRows[i], i),
-                        ],
-                      ),
-                      if (dataRows[i].value2.isNotEmpty)
-                        _buildDateRow(dataRows[i].value2, i),
-                    ],
-                    const SizedBox(height: 24),
+          Positioned(
+            top: topPadding + 72,
+            left: horizontalPadding,
+            right: horizontalPadding,
+            bottom: bottomPadding,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (int i = 0; i < dataRows.length; i++) ...[
+                    Table(
+                      columnWidths: const {
+                        0: FlexColumnWidth(2),
+                        1: FlexColumnWidth(1.2),
+                      },
+                      defaultVerticalAlignment:
+                          TableCellVerticalAlignment.middle,
+                      children: [
+                        _buildTitleValueRow(dataRows[i], i),
+                      ],
+                    ),
+                    if (dataRows[i].value2.isNotEmpty)
+                      _buildDateRow(dataRows[i].value2, i),
                   ],
-                ),
+                  const SizedBox(height: 24),
+                ],
               ),
             ),
           ),
