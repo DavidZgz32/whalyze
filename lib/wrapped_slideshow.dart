@@ -11,6 +11,7 @@ import 'screens/wrapped/wrapped_sixth_screen.dart';
 import 'screens/wrapped/wrapped_seventh_screen.dart';
 import 'screens/wrapped/wrapped_eighth_screen.dart';
 import 'screens/wrapped/wrapped_words_screen.dart';
+import 'screens/wrapped/wrapped_final_screen.dart';
 
 /// Slideshow unificado del Wrapped (chat 1 a 1). Usado al subir un chat o al abrirlo desde favoritos.
 /// Índice de las 9 pantallas: lib/WRAPPED_PANTALLAS.md
@@ -356,12 +357,16 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
         totalScreens: _totalScreens,
       );
     }
-    final String? placeholderTitle =
-        _currentScreen == 8 ? 'Botón de volver' : null;
+    if (_currentScreen == 8) {
+      return WrappedFinalScreen(
+        totalScreens: _totalScreens,
+        onGoHome: widget.onClose,
+      );
+    }
     return WrappedPlaceholderScreen(
       screenNumber: _currentScreen,
       totalScreens: _totalScreens,
-      title: placeholderTitle,
+      title: null,
     );
   }
 
@@ -432,20 +437,21 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
               ),
             ),
             _buildScreen(),
-            Positioned(
-              bottom: MediaQuery.of(context).padding.bottom + 8,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Text(
-                  'Creado con Whalyze',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Colors.white.withOpacity(0.8),
+            if (_currentScreen != 8)
+              Positioned(
+                bottom: MediaQuery.of(context).padding.bottom + 8,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Text(
+                    'Creado con Whalyze',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.white.withOpacity(0.8),
+                    ),
                   ),
                 ),
               ),
-            ),
             Positioned(
               top: MediaQuery.of(context).padding.top +
                   (_totalScreens * 4) +
