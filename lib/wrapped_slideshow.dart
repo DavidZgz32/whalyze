@@ -370,7 +370,7 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
     return GestureDetector(
       onTapDown: _handleTap,
       onLongPressStart: (_) => _pauseAnimation(),
-      onLongPressEnd: (_) => _resumeAnimation(),
+      onLongPressEnd: (_) {}, // Mantener pulsado = pausa y queda pausado (como el botón)
       child: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(

@@ -5,9 +5,11 @@ import 'package:flutter_archive/flutter_archive.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'wrapped_screen.dart';
 import 'services/wrapped_storage.dart';
 import 'favorites_screen.dart';
+import 'privacy_screen.dart';
 import 'onboarding_preferences.dart';
 import 'onboarding_screen.dart';
 
@@ -45,7 +47,11 @@ class MyApp extends StatelessWidget {
   }
 }
 
+/// Canal para leer archivo compartido (abrir con Whalyze desde WhatsApp, etc.).
+const _fileChannel = MethodChannel('com.whalyze.wra5/file');
+
 /// Decide si mostrar onboarding o pantalla principal al arrancar.
+/// Si la app se abre con un zip/archivo desde fuera (p. ej. WhatsApp), se salta el onboarding y se va al wrapped.
 class AppStart extends StatefulWidget {
   const AppStart({super.key});
 
@@ -55,13 +61,32 @@ class AppStart extends StatefulWidget {
 
 class _AppStartState extends State<AppStart> {
   bool? _onboardingDone;
+  String? _initialFilePath;
 
   @override
   void initState() {
     super.initState();
-    OnboardingPreferences.hasCompletedOnboarding().then((done) {
-      if (mounted) setState(() => _onboardingDone = done);
-    });
+    _resolveStart();
+  }
+
+  Future<void> _resolveStart() async {
+    final done = await OnboardingPreferences.hasCompletedOnboarding();
+    await Future.delayed(const Duration(milliseconds: 300));
+    String? sharedPath;
+    try {
+      final path = await _fileChannel.invokeMethod<String>('getSharedFile');
+      if (path != null && path.isNotEmpty) sharedPath = path;
+    } catch (_) {}
+    if (!mounted) return;
+    if (sharedPath != null) {
+      await OnboardingPreferences.setOnboardingDone();
+      setState(() {
+        _onboardingDone = true;
+        _initialFilePath = sharedPath;
+      });
+    } else {
+      setState(() => _onboardingDone = done);
+    }
   }
 
   void _goToHome() {
@@ -83,14 +108,17 @@ class _AppStartState extends State<AppStart> {
       );
     }
     if (_onboardingDone!) {
-      return const HomeScreen();
+      return HomeScreen(initialFilePath: _initialFilePath);
     }
     return OnboardingScreen(onFinish: _goToHome);
   }
 }
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.initialFilePath});
+
+  /// Si la app se abrió con un archivo (p. ej. zip desde WhatsApp), se abre el wrapped directamente.
+  final String? initialFilePath;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -120,9 +148,12 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Esperar a que el widget esté completamente construido antes de verificar el archivo
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkInitialSharedFile();
+      if (widget.initialFilePath != null) {
+        _processFile(widget.initialFilePath!);
+      } else {
+        _checkInitialSharedFile();
+      }
     });
   }
 
@@ -145,6 +176,64 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       // Si no hay archivo compartido o hay error, continuar normalmente
       print('No hay archivo compartido o error: $e');
+    }
+  }
+
+  Future<void> _showEmailPopup(
+    BuildContext context, {
+    required String titulo,
+    required String subject,
+  }) async {
+    if (!context.mounted) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            titulo,
+            style: GoogleFonts.poppins(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          content: Text(
+            'Se abrirá tu cliente de correo para enviar un email a info@whalyze.com.',
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
+              height: 1.5,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text('Cancelar', style: GoogleFonts.poppins()),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text('Abrir correo', style: GoogleFonts.poppins()),
+            ),
+          ],
+        );
+      },
+    );
+    if (ok == true && context.mounted) {
+      final uri = Uri.parse(
+        'mailto:info@whalyze.com?subject=${Uri.encodeComponent(subject)}',
+      );
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo abrir el cliente de correo'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -462,11 +551,30 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: GoogleFonts.poppins(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
-                    color: Colors.black87,
+                    fontStyle: FontStyle.italic,
+                    color: const Color(0xFF0D3D0D),
                   ),
                 ),
               ),
               const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.privacy_tip_outlined),
+                title: Text(
+                  'Privacidad',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const PrivacyScreen(),
+                    ),
+                  );
+                },
+              ),
               ListTile(
                 leading: const Icon(Icons.favorite_border),
                 title: Text(
@@ -502,9 +610,47 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.home_outlined),
+                leading: const Icon(Icons.lightbulb_outline),
                 title: Text(
-                  'Volver a bienvenida',
+                  'Sugerir una mejora',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _showEmailPopup(
+                    context,
+                    titulo: 'Sugerir una mejora',
+                    subject: 'Sugerencia de mejora',
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.bug_report_outlined),
+                title: Text(
+                  'Reportar bug',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _showEmailPopup(
+                    context,
+                    titulo: 'Reportar bug',
+                    subject: 'Reporte de bug',
+                  );
+                },
+              ),
+              const Spacer(),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.exit_to_app),
+                title: Text(
+                  'Salir',
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     fontWeight: FontWeight.w400,
