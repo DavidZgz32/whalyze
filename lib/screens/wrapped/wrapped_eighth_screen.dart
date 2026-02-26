@@ -38,6 +38,8 @@ class WrappedEighthScreenState extends State<WrappedEighthScreen>
   late List<Animation<double>> _rowTitleAnimations;
   late List<Animation<double>> _rowValue1Animations;
   late List<Animation<double>> _rowValue2Animations;
+  late AnimationController _deletedMessageController;
+  late Animation<double> _deletedMessageAnimation;
 
   static const double _participantBallSize = 40.0;
   static const Color _numberBadgeBg = Color(0xFF00B872);
@@ -90,7 +92,7 @@ class WrappedEighthScreenState extends State<WrappedEighthScreen>
       CurvedAnimation(parent: _separatorController, curve: Curves.easeOut),
     );
 
-    const dataRowCount = 3;
+    const dataRowCount = 4;
     _rowTitleControllers = List.generate(
       dataRowCount,
       (_) => AnimationController(
@@ -125,6 +127,14 @@ class WrappedEighthScreenState extends State<WrappedEighthScreen>
             .animate(CurvedAnimation(parent: c, curve: Curves.easeOut)))
         .toList();
 
+    _deletedMessageController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _deletedMessageAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _deletedMessageController, curve: Curves.easeOut),
+    );
+
     _startAnimations();
   }
 
@@ -154,7 +164,7 @@ class WrappedEighthScreenState extends State<WrappedEighthScreen>
   Future<void> _animateRowsSequentially() async {
     await Future.delayed(const Duration(milliseconds: 900));
     if (!mounted || _paused) return;
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 4; i++) {
       if (!mounted || _paused) return;
       _rowTitleControllers[i].forward();
       await Future.delayed(const Duration(milliseconds: 2000));
@@ -163,10 +173,13 @@ class WrappedEighthScreenState extends State<WrappedEighthScreen>
       await Future.delayed(const Duration(milliseconds: 1200));
       if (!mounted || _paused) return;
       _rowValue2Controllers[i].forward();
-      if (i < 2) {
+      if (i < 3) {
         await Future.delayed(const Duration(milliseconds: 1200));
       }
     }
+    await Future.delayed(const Duration(milliseconds: 1400));
+    if (!mounted || _paused) return;
+    _deletedMessageController.forward();
   }
 
   @override
@@ -185,6 +198,7 @@ class WrappedEighthScreenState extends State<WrappedEighthScreen>
     for (final c in _rowValue2Controllers) {
       c.dispose();
     }
+    _deletedMessageController.dispose();
     super.dispose();
   }
 
@@ -203,6 +217,7 @@ class WrappedEighthScreenState extends State<WrappedEighthScreen>
     for (final c in _rowValue2Controllers) {
       c.reset();
     }
+    _deletedMessageController.reset();
     _startAnimations();
   }
 
@@ -222,6 +237,7 @@ class WrappedEighthScreenState extends State<WrappedEighthScreen>
     for (final c in _rowValue2Controllers) {
       c.stop(canceled: false);
     }
+    _deletedMessageController.stop(canceled: false);
   }
 
   void resumeAnimations() {
@@ -243,6 +259,20 @@ class WrappedEighthScreenState extends State<WrappedEighthScreen>
     for (final c in _rowValue2Controllers) {
       forwardIfInProgress(c);
     }
+    forwardIfInProgress(_deletedMessageController);
+  }
+
+  /// Nombre completo; si es una letra o emoji, usa una letra + inicial del apellido (ej: "David M").
+  String _displayNameForDeleted(String participant) {
+    if (participant == '—') return '—';
+    final trimmed = participant.trim();
+    final parts = trimmed.split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      final first = parts[0];
+      final lastInitial = parts[1].isNotEmpty ? String.fromCharCode(parts[1].runes.first) : '';
+      return lastInitial.isEmpty ? first : '$first $lastInitial';
+    }
+    return trimmed;
   }
 
   Widget _buildParticipantBall(String participant) {
@@ -280,6 +310,17 @@ class WrappedEighthScreenState extends State<WrappedEighthScreen>
     final oneTime2 = widget.data.oneTimePhotosByParticipant[p2] ?? 0;
     final urls1 = widget.data.sharedUrlsByParticipant[p1] ?? 0;
     final urls2 = widget.data.sharedUrlsByParticipant[p2] ?? 0;
+    final deleted1 = widget.data.deletedMessagesByParticipant[p1] ?? 0;
+    final deleted2 = widget.data.deletedMessagesByParticipant[p2] ?? 0;
+
+    final String? deletedWinnerName;
+    if (deleted1 > deleted2 && deleted1 > 0) {
+      deletedWinnerName = _displayNameForDeleted(p1);
+    } else if (deleted2 > deleted1 && deleted2 > 0) {
+      deletedWinnerName = _displayNameForDeleted(p2);
+    } else {
+      deletedWinnerName = null;
+    }
 
     final dataRows = <_MediaRowData>[
       _MediaRowData(
@@ -296,6 +337,11 @@ class WrappedEighthScreenState extends State<WrappedEighthScreen>
         title: 'URLs compartidas',
         value1: '$urls1',
         value2: '$urls2',
+      ),
+      _MediaRowData(
+        title: 'Mensajes borrados',
+        value1: '$deleted1',
+        value2: '$deleted2',
       ),
     ];
 
@@ -419,6 +465,22 @@ class WrappedEighthScreenState extends State<WrappedEighthScreen>
                               _buildAnimatedTableRow(dataRows[i], i),
                           ],
                         ),
+                        if (deletedWinnerName != null) ...[
+                          const SizedBox(height: 16),
+                          FadeTransition(
+                            opacity: _deletedMessageAnimation,
+                            child: Text(
+                              '$deletedWinnerName tiene más mensajes borrados... ¿Qué escondes? 😏',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.poppins(
+                                fontSize: 22,
+                                fontStyle: FontStyle.italic,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 24),
                       ],
                     ),

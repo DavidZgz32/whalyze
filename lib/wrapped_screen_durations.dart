@@ -22,10 +22,10 @@ class WrappedScreenDurations {
   static const int pantalla5 = 28000;
 
   /// Índice 6 – Pantalla 7: Media
-  static const int pantalla6 = 60000;
+  static const int pantalla6 = 30000;
 
   /// Índice 7 – Pantalla 8: Palabras más usadas
-  static const int pantalla7 = 20000;
+  static const int pantalla7 = 19000;
 
   /// Índice 8 – Pantalla 9: Botón de volver (última)
   static const int pantalla8 = 25000;
