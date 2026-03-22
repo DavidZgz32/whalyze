@@ -1,7 +1,11 @@
 package com.whalyze.wra5
 
+import android.app.PictureInPictureParams
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.util.Rational
+import androidx.core.view.WindowCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -11,7 +15,15 @@ import java.io.InputStream
 
 class MainActivity: FlutterActivity() {
     private val CHANNEL = "com.whalyze.wra5/file"
+    private val PIP_CHANNEL = "com.whalyze.wra5/pip"
     private var sharedFilePath: String? = null
+
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        // Draw behind system bars; Flutter aplica padding con insets / SafeArea.
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        super.onCreate(savedInstanceState)
+        handleIntent(intent)
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -44,15 +56,31 @@ class MainActivity: FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PIP_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "enterPictureInPicture" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        try {
+                            val params = PictureInPictureParams.Builder()
+                                .setAspectRatio(Rational(16, 9))
+                                .build()
+                            enterPictureInPictureMode(params)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("PIP_ERROR", e.message, null)
+                        }
+                    } else {
+                        result.success(false)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        handleIntent(intent)
-    }
-
-    override fun onCreate(savedInstanceState: android.os.Bundle?) {
-        super.onCreate(savedInstanceState)
         handleIntent(intent)
     }
 

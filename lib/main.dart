@@ -12,9 +12,23 @@ import 'favorites_screen.dart';
 import 'privacy_screen.dart';
 import 'onboarding_preferences.dart';
 import 'onboarding_screen.dart';
+import 'pip_demo_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (Platform.isAndroid) {
+    // Edge-to-edge explícito + estilo sin colores de barra (evita setStatusBarColor /
+    // setNavigationBarColor deprecados en Android 15+ en el embedding de Flutter).
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarIconBrightness: Brightness.dark,
+        systemNavigationBarIconBrightness: Brightness.dark,
+        systemStatusBarContrastEnforced: false,
+        systemNavigationBarContrastEnforced: false,
+      ),
+    );
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  }
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
   ]);
@@ -39,6 +53,12 @@ class MyApp extends StatelessWidget {
             fontSize: 24,
             fontWeight: FontWeight.w700,
             color: Colors.black87,
+          ),
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarIconBrightness: Brightness.dark,
+            systemNavigationBarIconBrightness: Brightness.dark,
+            systemStatusBarContrastEnforced: false,
+            systemNavigationBarContrastEnforced: false,
           ),
         ),
       ),
@@ -593,6 +613,24 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       )
                       .then((_) => setState(() {}));
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.picture_in_picture_alt_outlined),
+                title: Text(
+                  'Vídeo (imagen en imagen)',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const PipDemoScreen(),
+                    ),
+                  );
                 },
               ),
               ListTile(
