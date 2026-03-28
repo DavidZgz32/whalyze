@@ -41,7 +41,4 @@ flutter:
   assets:
     - assets/images/
     - assets/videos/sample.mp4
-    - assets/images/privacidad.png
-    - assets/images/fondo-back.png
-    - assets/images/saludo_home.png
 
