@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -36,6 +38,17 @@ class WrappedFinalScreen extends StatelessWidget {
 
   static const Color _teal = Color(0xFF00C980);
   static const Color _tealDark = Color(0xFF00A6B6);
+
+  static String get _ratingPrompt {
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.iOS:
+        return 'Si te ha gustado, valóranos en App Store';
+      case TargetPlatform.android:
+        return 'Si te ha gustado, valóranos en Play Store';
+      default:
+        return 'Si te ha gustado, valóranos';
+    }
+  }
 
   Widget _buildCardButton({
     required String label,
@@ -202,7 +215,7 @@ class WrappedFinalScreen extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                'Si te ha gustado, valóranos en Play Store',
+                _ratingPrompt,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(
                   fontSize: 15,
