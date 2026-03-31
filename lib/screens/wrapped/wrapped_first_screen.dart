@@ -313,6 +313,23 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
     _startAnimations();
   }
 
+  /// Estado final sin reproducir transiciones (p. ej. al volver a una diapositiva ya completada).
+  void jumpAnimationsToEnd() {
+    _paused = false;
+    _animationGeneration++;
+    _titleFadeController.value = 1.0;
+    _titlePositionController.value = 1.0;
+    _circle1Controller.value = 1.0;
+    _circle2Controller.value = 1.0;
+    _name1Controller.value = 1.0;
+    _name2Controller.value = 1.0;
+    _firstMessageController.value = 1.0;
+    _daysController.value = 1.0;
+    _randomMessageController.value = 1.0;
+    _exitSlideController.value = 1.0;
+    if (mounted) setState(() {});
+  }
+
   void pauseAnimations() {
     _paused = true;
     _animationGeneration++; // invalida todos los callbacks pendientes (Future.delayed / .then)

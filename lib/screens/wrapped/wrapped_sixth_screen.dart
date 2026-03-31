@@ -78,6 +78,13 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
   late final Animation<double> _heatmapVisibleAnimation;
 
   bool _paused = false;
+  int _sequenceGen = 0;
+
+  Future<void> _waitUntilUnpaused() async {
+    while (_paused && mounted) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+  }
 
   int _bandWithMostMessages = 0;
   int _phraseIndex = 0;
@@ -155,30 +162,67 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
 
   void _startAnimations() {
     _paused = false;
-    _titleFadeController.forward().then((_) {
-      Future.delayed(const Duration(milliseconds: 1200), () {
-        if (!mounted || _paused) return;
-        _titlePositionController.forward().then((_) {
-          if (!mounted || _paused) return;
-          Future.delayed(const Duration(milliseconds: 500), () {
-            if (!mounted || _paused) return;
-            _subtitleController.forward().then((_) {
-              if (!mounted || _paused) return;
-              Future.delayed(const Duration(milliseconds: 200), () {
-                if (!mounted || _paused) return;
-                Future.delayed(const Duration(milliseconds: 1500), () {
-                  if (!mounted || _paused) return;
-                  _heatmapVisibleController.forward();
-                _heatmapController.forward();
-                _dayLettersController.forward();
-                _heatmapController.addStatusListener(_onHeatmapStatusChanged);
-                });
-              });
-            });
-          });
-        });
-      });
-    });
+    _runOpeningSequence();
+  }
+
+  Future<void> _runOpeningSequence() async {
+    final gen = _sequenceGen;
+    bool aborted() => !mounted || gen != _sequenceGen;
+
+    if (_titleFadeController.value < 1.0) {
+      await _titleFadeController.forward();
+    }
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    await Future.delayed(const Duration(milliseconds: 1200));
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    if (_titlePositionController.value < 1.0) {
+      await _titlePositionController.forward();
+    }
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    if (_subtitleController.value < 1.0) {
+      await _subtitleController.forward();
+    }
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    await Future.delayed(const Duration(milliseconds: 200));
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    await Future.delayed(const Duration(milliseconds: 1500));
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    _heatmapController.removeStatusListener(_onHeatmapStatusChanged);
+    if (aborted()) return;
+
+    if (_heatmapVisibleController.value < 1.0) {
+      _heatmapVisibleController.forward();
+    }
+    if (_dayLettersController.value < 1.0) {
+      _dayLettersController.forward();
+    }
+    _heatmapController.addStatusListener(_onHeatmapStatusChanged);
+    if (_heatmapController.value < 1.0) {
+      await _heatmapController.forward();
+    }
   }
 
   void pauseAnimations() {
@@ -212,6 +256,7 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
   }
 
   void resetAnimations() {
+    _sequenceGen++;
     _heatmapController.removeStatusListener(_onHeatmapStatusChanged);
     _titleFadeController.reset();
     _titlePositionController.reset();
@@ -225,26 +270,64 @@ class WrappedSixthScreenState extends State<WrappedSixthScreen>
     _startAnimations();
   }
 
+  void jumpAnimationsToEnd() {
+    _sequenceGen++;
+    _paused = false;
+    _heatmapController.removeStatusListener(_onHeatmapStatusChanged);
+    _titleFadeController.value = 1.0;
+    _titlePositionController.value = 1.0;
+    _subtitleController.value = 1.0;
+    _heatmapVisibleController.value = 1.0;
+    _heatmapController.value = 1.0;
+    _dayLettersController.value = 1.0;
+    _hourlyTitleController.value = 1.0;
+    _hourlyBarsController.value = 1.0;
+    _finalPhraseController.value = 1.0;
+    if (mounted) setState(() {});
+  }
+
   void _onHeatmapStatusChanged(AnimationStatus status) {
     if (status != AnimationStatus.completed) return;
     _heatmapController.removeStatusListener(_onHeatmapStatusChanged);
-    if (!mounted || _paused) return;
-    Future.delayed(const Duration(milliseconds: 2000), () {
-      if (!mounted || _paused) return;
-      _hourlyTitleController.forward().then((_) {
-        if (!mounted || _paused) return;
-        Future.delayed(const Duration(milliseconds: 600), () {
-          if (!mounted || _paused) return;
-          _hourlyBarsController.forward().then((_) {
-          if (!mounted || _paused) return;
-          Future.delayed(const Duration(milliseconds: 1400), () {
-            if (!mounted || _paused) return;
-            _finalPhraseController.forward();
-          });
-        });
-        });
-      });
-    });
+    final gen = _sequenceGen;
+    _runAfterHeatmap(gen);
+  }
+
+  Future<void> _runAfterHeatmap(int gen) async {
+    bool aborted() => !mounted || gen != _sequenceGen;
+
+    await Future.delayed(const Duration(milliseconds: 2000));
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    if (_hourlyTitleController.value < 1.0) {
+      await _hourlyTitleController.forward();
+    }
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    if (_hourlyBarsController.value < 1.0) {
+      await _hourlyBarsController.forward();
+    }
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    await Future.delayed(const Duration(milliseconds: 1400));
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    if (_finalPhraseController.value < 1.0) {
+      await _finalPhraseController.forward();
+    }
   }
 
   @override

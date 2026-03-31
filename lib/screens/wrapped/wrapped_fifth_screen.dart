@@ -50,6 +50,13 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
   late int _randomMessageIndex; // 0=starters, 1=response_time, 2=quick
 
   bool _paused = false;
+  int _sequenceGen = 0;
+
+  Future<void> _waitUntilUnpaused() async {
+    while (_paused && mounted) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+  }
 
   @override
   void initState() {
@@ -146,49 +153,97 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
 
   void _startAnimations() {
     _paused = false;
-    // 1. Título en el centro, luego se desplaza arriba
-    _titleFadeController.forward().then((_) {
-      Future.delayed(const Duration(milliseconds: 1200), () {
-        if (!mounted || _paused) return;
-        _titlePositionController.forward().then((_) {
-          if (!mounted || _paused) return;
-          // 2. Inicial 1, 700ms (200+500 extra), Inicial 2
-          _initial1Controller.forward();
-          Future.delayed(const Duration(milliseconds: 700), () {
-            if (!mounted || _paused) return;
-            _initial2Controller.forward().then((_) {
-              if (!mounted || _paused) return;
-              _separatorController.forward().then((_) {
-                if (!mounted || _paused) return;
-                _animateRowsSequentially();
-              });
-            });
-          });
-        });
-      });
-    });
+    _runAnimationSequence();
   }
 
-  Future<void> _animateRowsSequentially() async {
-    // +900ms antes del primer título (tras la raya blanca)
+  Future<void> _runAnimationSequence() async {
+    final gen = _sequenceGen;
+    bool aborted() => !mounted || gen != _sequenceGen;
+
+    if (_titleFadeController.value < 1.0) {
+      await _titleFadeController.forward();
+    }
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    await Future.delayed(const Duration(milliseconds: 1200));
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    if (_titlePositionController.value < 1.0) {
+      await _titlePositionController.forward();
+    }
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    if (_initial1Controller.value < 1.0) {
+      await _initial1Controller.forward();
+    }
+    if (aborted()) return;
+    await Future.delayed(const Duration(milliseconds: 700));
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    if (_initial2Controller.value < 1.0) {
+      await _initial2Controller.forward();
+    }
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    if (_separatorController.value < 1.0) {
+      await _separatorController.forward();
+    }
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    await _animateRowsSequentially(gen);
+  }
+
+  Future<void> _animateRowsSequentially(int gen) async {
+    bool aborted() => !mounted || gen != _sequenceGen;
+
     await Future.delayed(const Duration(milliseconds: 900));
-    if (!mounted || _paused) return;
-    for (int i = 0; i < 3; i++) {
-      if (!mounted || _paused) return;
-      _rowTitleControllers[i].forward();
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+    for (var i = 0; i < 3; i++) {
+      if (aborted()) return;
+      await _waitUntilUnpaused();
+      if (aborted()) return;
+      if (_rowTitleControllers[i].value < 1.0) {
+        await _rowTitleControllers[i].forward();
+      }
       await Future.delayed(const Duration(milliseconds: 2000));
-      if (!mounted || _paused) return;
-      _rowValue1Controllers[i].forward();
+      if (aborted()) return;
+      await _waitUntilUnpaused();
+      if (aborted()) return;
+      if (_rowValue1Controllers[i].value < 1.0) {
+        await _rowValue1Controllers[i].forward();
+      }
       await Future.delayed(const Duration(milliseconds: 1200));
-      if (!mounted || _paused) return;
-      _rowValue2Controllers[i].forward();
+      if (aborted()) return;
+      await _waitUntilUnpaused();
+      if (aborted()) return;
+      if (_rowValue2Controllers[i].value < 1.0) {
+        await _rowValue2Controllers[i].forward();
+      }
       if (i < 2) {
         await Future.delayed(const Duration(milliseconds: 1200));
       }
     }
     await Future.delayed(const Duration(milliseconds: 800));
-    if (!mounted || _paused) return;
-    _messageController.forward();
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+    if (_messageController.value < 1.0) {
+      await _messageController.forward();
+    }
   }
 
   @override
@@ -212,6 +267,7 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
   }
 
   void resetAnimations() {
+    _sequenceGen++;
     _titleFadeController.reset();
     _titlePositionController.reset();
     _initial1Controller.reset();
@@ -270,6 +326,27 @@ class WrappedFifthScreenState extends State<WrappedFifthScreen>
       forwardIfInProgress(c);
     }
     forwardIfInProgress(_messageController);
+  }
+
+  void jumpAnimationsToEnd() {
+    _sequenceGen++;
+    _paused = false;
+    _titleFadeController.value = 1.0;
+    _titlePositionController.value = 1.0;
+    _initial1Controller.value = 1.0;
+    _initial2Controller.value = 1.0;
+    _separatorController.value = 1.0;
+    for (final c in _rowTitleControllers) {
+      c.value = 1.0;
+    }
+    for (final c in _rowValue1Controllers) {
+      c.value = 1.0;
+    }
+    for (final c in _rowValue2Controllers) {
+      c.value = 1.0;
+    }
+    _messageController.value = 1.0;
+    if (mounted) setState(() {});
   }
 
   /// Parsea tiempo "M:SS" o "H:MM:SS" a minutos. Menor = más rápido.

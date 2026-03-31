@@ -234,6 +234,22 @@ class WrappedSeventhScreenState extends State<WrappedSeventhScreen>
     _startAnimations();
   }
 
+  void jumpAnimationsToEnd() {
+    _paused = false;
+    _titleFadeController.value = 1.0;
+    _titlePositionController.value = 1.0;
+    for (final c in _rowTitleControllers) {
+      c.value = 1.0;
+    }
+    for (final c in _rowValue1Controllers) {
+      c.value = 1.0;
+    }
+    for (final c in _rowValue2Controllers) {
+      c.value = 1.0;
+    }
+    if (mounted) setState(() {});
+  }
+
   void pauseAnimations() {
     _paused = true;
     _titleFadeController.stop(canceled: false);
@@ -298,17 +314,12 @@ class WrappedSeventhScreenState extends State<WrappedSeventhScreen>
 
   @override
   Widget build(BuildContext context) {
-    final participants = widget.data.participants;
-    final p1 = participants.isNotEmpty ? participants[0] : '—';
-
     final value2Row1 = _formatDateRange();
     final value2Row2 = widget.data.mostConsecutiveUser != null
         ? '${widget.data.mostConsecutiveUser} - ${_formatConsecutiveDate()}'
         : _formatConsecutiveDate();
     final totalMultimedia = widget.data.multimediaByParticipant.values.fold<int>(
         0, (sum, count) => sum + count);
-    final multimediaExampleUser = p1 != '—' ? p1 : 'Usuario';
-    final value2Row4 = 'Se mide así:\n23/2/26, 22:10 - $multimediaExampleUser: <Multimedia omitido>';
     final dataRows = <_RowData>[
       _RowData(
         title: 'Racha más larga días hablando',
@@ -330,7 +341,7 @@ class WrappedSeventhScreenState extends State<WrappedSeventhScreen>
       _RowData(
         title: 'Multimedia, stickers y audios compartidos:',
         value1: '$totalMultimedia',
-        value2: value2Row4,
+        value2: '',
       ),
     ];
 

@@ -34,6 +34,13 @@ class WrappedWordsScreenState extends State<WrappedWordsScreen>
   late List<AnimationController> _wordControllers;
   late List<Animation<double>> _wordAnimations;
   bool _paused = false;
+  int _sequenceGen = 0;
+
+  Future<void> _waitUntilUnpaused() async {
+    while (_paused && mounted) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+  }
 
   @override
   void initState() {
@@ -81,23 +88,45 @@ class WrappedWordsScreenState extends State<WrappedWordsScreen>
   }
 
   Future<void> _startAnimations() async {
+    final gen = _sequenceGen;
     _paused = false;
-    _titleFadeController.forward().then((_) {
-      Future.delayed(const Duration(milliseconds: 1200), () {
-        if (!mounted || _paused) return;
-        _titlePositionController.forward().then((_) {
-          if (!mounted || _paused) return;
-          _animateWords();
-        });
-      });
-    });
+    bool aborted() => !mounted || gen != _sequenceGen;
+
+    if (_titleFadeController.value < 1.0) {
+      await _titleFadeController.forward();
+    }
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    await Future.delayed(const Duration(milliseconds: 1200));
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    if (_titlePositionController.value < 1.0) {
+      await _titlePositionController.forward();
+    }
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    await _animateWords(gen);
   }
 
-  Future<void> _animateWords() async {
-    for (int i = 0; i < _wordControllers.length; i++) {
-      if (!mounted || _paused) return;
-      _wordControllers[i].forward();
-      await Future.delayed(const Duration(milliseconds: _delayBetweenWordsMs));
+  Future<void> _animateWords(int gen) async {
+    bool aborted() => !mounted || gen != _sequenceGen;
+    for (var i = 0; i < _wordControllers.length; i++) {
+      if (aborted()) return;
+      await _waitUntilUnpaused();
+      if (aborted()) return;
+      if (_wordControllers[i].value < 1.0) {
+        await _wordControllers[i].forward();
+      }
+      if (i < _wordControllers.length - 1) {
+        await Future.delayed(
+            const Duration(milliseconds: _delayBetweenWordsMs));
+      }
     }
   }
 
@@ -112,6 +141,8 @@ class WrappedWordsScreenState extends State<WrappedWordsScreen>
   }
 
   void resetAnimations() {
+    _sequenceGen++;
+    _paused = false;
     _titleFadeController.reset();
     _titlePositionController.reset();
     for (final c in _wordControllers) {
@@ -139,6 +170,17 @@ class WrappedWordsScreenState extends State<WrappedWordsScreen>
     for (final c in _wordControllers) {
       forwardIfInProgress(c);
     }
+  }
+
+  void jumpAnimationsToEnd() {
+    _sequenceGen++;
+    _paused = false;
+    _titleFadeController.value = 1.0;
+    _titlePositionController.value = 1.0;
+    for (final c in _wordControllers) {
+      c.value = 1.0;
+    }
+    if (mounted) setState(() {});
   }
 
   @override

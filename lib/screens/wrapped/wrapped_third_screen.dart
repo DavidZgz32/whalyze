@@ -238,6 +238,9 @@ class WrappedThirdScreenState extends State<WrappedThirdScreen>
   List<AnimationController> _lineControllers = [];
   List<Animation<double>> _lineAnimations = [];
 
+  bool _paused = false;
+  int _sequenceGen = 0;
+
   static const int _maxEmojiRows = 7;
 
   int get _totalLines {
@@ -305,6 +308,12 @@ class WrappedThirdScreenState extends State<WrappedThirdScreen>
     return 'Parece que $leftName $msgLeft $secondPart.';
   }
 
+  Future<void> _waitUntilUnpaused() async {
+    while (_paused && mounted) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -344,18 +353,38 @@ class WrappedThirdScreenState extends State<WrappedThirdScreen>
       );
     }
 
-    _titleFadeController.forward().then((_) {
-      Future.delayed(const Duration(milliseconds: 800), () {
-        if (!mounted) return;
-        _titlePositionController.forward().then((_) {
-          if (!mounted) return;
-          Future.delayed(const Duration(milliseconds: 400), () {
-            if (!mounted) return;
-            _startLineAnimation();
-          });
-        });
-      });
-    });
+    _runOpenSequence();
+  }
+
+  Future<void> _runOpenSequence() async {
+    final gen = _sequenceGen;
+    bool aborted() => !mounted || gen != _sequenceGen;
+
+    if (_titleFadeController.value < 1.0) {
+      await _titleFadeController.forward();
+    }
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    if (_titlePositionController.value < 1.0) {
+      await _titlePositionController.forward();
+    }
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    await Future.delayed(const Duration(milliseconds: 400));
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    _startLineAnimation();
   }
 
   void _startLineAnimation() {
@@ -390,6 +419,7 @@ class WrappedThirdScreenState extends State<WrappedThirdScreen>
   }
 
   void pauseAnimations() {
+    _paused = true;
     _timer?.cancel();
     _timer = null;
     _titleFadeController.stop(canceled: false);
@@ -400,6 +430,7 @@ class WrappedThirdScreenState extends State<WrappedThirdScreen>
   }
 
   void resumeAnimations() {
+    _paused = false;
     if (_titleFadeController.value < 1.0) _titleFadeController.forward();
     if (_titlePositionController.value < 1.0) _titlePositionController.forward();
     for (var i = 0; i < _lineControllers.length; i++) {
@@ -410,24 +441,28 @@ class WrappedThirdScreenState extends State<WrappedThirdScreen>
   }
 
   void resetAnimations() {
+    _sequenceGen++;
+    _paused = false;
     _timer?.cancel();
     _timer = null;
     _titleFadeController.reset();
     _titlePositionController.reset();
     for (final c in _lineControllers) c.reset();
     if (mounted) setState(() => _visibleLines = 0);
-    _titleFadeController.forward().then((_) {
-      Future.delayed(const Duration(milliseconds: 800), () {
-        if (!mounted) return;
-        _titlePositionController.forward().then((_) {
-          if (!mounted) return;
-          Future.delayed(const Duration(milliseconds: 400), () {
-            if (!mounted) return;
-            _startLineAnimation();
-          });
-        });
-      });
-    });
+    _runOpenSequence();
+  }
+
+  void jumpAnimationsToEnd() {
+    _sequenceGen++;
+    _paused = false;
+    _timer?.cancel();
+    _timer = null;
+    _titleFadeController.value = 1.0;
+    _titlePositionController.value = 1.0;
+    for (final c in _lineControllers) {
+      c.value = 1.0;
+    }
+    if (mounted) setState(() => _visibleLines = _totalLines);
   }
 
   @override

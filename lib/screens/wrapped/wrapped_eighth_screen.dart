@@ -45,6 +45,13 @@ class WrappedEighthScreenState extends State<WrappedEighthScreen>
   static const Color _numberBadgeBg = Color(0xFF00B872);
 
   bool _paused = false;
+  int _sequenceGen = 0;
+
+  Future<void> _waitUntilUnpaused() async {
+    while (_paused && mounted) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+  }
 
   @override
   void initState() {
@@ -140,46 +147,98 @@ class WrappedEighthScreenState extends State<WrappedEighthScreen>
 
   void _startAnimations() {
     _paused = false;
-    _titleFadeController.forward().then((_) {
-      Future.delayed(const Duration(milliseconds: 1200), () {
-        if (!mounted || _paused) return;
-        _titlePositionController.forward().then((_) {
-          if (!mounted || _paused) return;
-          _initial1Controller.forward();
-          Future.delayed(const Duration(milliseconds: 700), () {
-            if (!mounted || _paused) return;
-            _initial2Controller.forward().then((_) {
-              if (!mounted || _paused) return;
-              _separatorController.forward().then((_) {
-                if (!mounted || _paused) return;
-                _animateRowsSequentially();
-              });
-            });
-          });
-        });
-      });
-    });
+    _runAnimationSequence();
   }
 
-  Future<void> _animateRowsSequentially() async {
+  Future<void> _runAnimationSequence() async {
+    final gen = _sequenceGen;
+    bool aborted() => !mounted || gen != _sequenceGen;
+
+    if (_titleFadeController.value < 1.0) {
+      await _titleFadeController.forward();
+    }
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    await Future.delayed(const Duration(milliseconds: 1200));
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    if (_titlePositionController.value < 1.0) {
+      await _titlePositionController.forward();
+    }
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    if (_initial1Controller.value < 1.0) {
+      await _initial1Controller.forward();
+    }
+    if (aborted()) return;
+    await Future.delayed(const Duration(milliseconds: 700));
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    if (_initial2Controller.value < 1.0) {
+      await _initial2Controller.forward();
+    }
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    if (_separatorController.value < 1.0) {
+      await _separatorController.forward();
+    }
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    await _animateRowsSequentially(gen);
+  }
+
+  Future<void> _animateRowsSequentially(int gen) async {
+    bool aborted() => !mounted || gen != _sequenceGen;
+
     await Future.delayed(const Duration(milliseconds: 900));
-    if (!mounted || _paused) return;
-    for (int i = 0; i < 4; i++) {
-      if (!mounted || _paused) return;
-      _rowTitleControllers[i].forward();
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    for (var i = 0; i < 4; i++) {
+      if (aborted()) return;
+      await _waitUntilUnpaused();
+      if (aborted()) return;
+      if (_rowTitleControllers[i].value < 1.0) {
+        await _rowTitleControllers[i].forward();
+      }
       await Future.delayed(const Duration(milliseconds: 2000));
-      if (!mounted || _paused) return;
-      _rowValue1Controllers[i].forward();
+      if (aborted()) return;
+      await _waitUntilUnpaused();
+      if (aborted()) return;
+      if (_rowValue1Controllers[i].value < 1.0) {
+        await _rowValue1Controllers[i].forward();
+      }
       await Future.delayed(const Duration(milliseconds: 1200));
-      if (!mounted || _paused) return;
-      _rowValue2Controllers[i].forward();
+      if (aborted()) return;
+      await _waitUntilUnpaused();
+      if (aborted()) return;
+      if (_rowValue2Controllers[i].value < 1.0) {
+        await _rowValue2Controllers[i].forward();
+      }
       if (i < 3) {
         await Future.delayed(const Duration(milliseconds: 1200));
       }
     }
     await Future.delayed(const Duration(milliseconds: 1400));
-    if (!mounted || _paused) return;
-    _deletedMessageController.forward();
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+    if (_deletedMessageController.value < 1.0) {
+      await _deletedMessageController.forward();
+    }
   }
 
   @override
@@ -203,6 +262,7 @@ class WrappedEighthScreenState extends State<WrappedEighthScreen>
   }
 
   void resetAnimations() {
+    _sequenceGen++;
     _titleFadeController.reset();
     _titlePositionController.reset();
     _initial1Controller.reset();
@@ -219,6 +279,27 @@ class WrappedEighthScreenState extends State<WrappedEighthScreen>
     }
     _deletedMessageController.reset();
     _startAnimations();
+  }
+
+  void jumpAnimationsToEnd() {
+    _sequenceGen++;
+    _paused = false;
+    _titleFadeController.value = 1.0;
+    _titlePositionController.value = 1.0;
+    _initial1Controller.value = 1.0;
+    _initial2Controller.value = 1.0;
+    _separatorController.value = 1.0;
+    for (final c in _rowTitleControllers) {
+      c.value = 1.0;
+    }
+    for (final c in _rowValue1Controllers) {
+      c.value = 1.0;
+    }
+    for (final c in _rowValue2Controllers) {
+      c.value = 1.0;
+    }
+    _deletedMessageController.value = 1.0;
+    if (mounted) setState(() {});
   }
 
   void pauseAnimations() {

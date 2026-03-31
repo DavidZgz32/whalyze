@@ -44,6 +44,9 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
   bool _animationsInitialized = false;
   bool _paused = false;
 
+  /// Invalida la secuencia async en curso (reset / jumpToEnd).
+  int _sequenceGen = 0;
+
   @override
   void initState() {
     super.initState();
@@ -180,68 +183,136 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
     );
 
     _animationsInitialized = true;
-    _startAnimations();
+    _runAnimationSequence();
   }
 
-  void _startAnimations() {
-    // 1. Aparecer título en el centro (más rápido)
-    _titleFadeController.forward().then((_) {
-      if (!mounted || _paused) return;
-      Future.delayed(const Duration(milliseconds: 1200), () {
-        if (!mounted || _paused) return;
-        _titlePositionController.forward().then((_) {
-          if (!mounted || _paused) return;
-          _animateParticipantsSequentially();
-        });
-      });
-    });
+  Future<void> _waitUntilUnpaused() async {
+    while (_paused && mounted) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
   }
 
-  void _animateParticipantsSequentially() {
-    Future<void> animateNext(int index) async {
-      if (!mounted || _paused) return;
-      if (index < _participantControllers.length) {
-        await Future.delayed(const Duration(milliseconds: 500));
-        if (!mounted || _paused) return;
-        _participantControllers[index].forward();
-        await animateNext(index + 1);
-      } else {
-        await Future.delayed(const Duration(milliseconds: 1200));
-        if (!mounted || _paused) return;
-        _barController.forward();
+  Future<void> _runAnimationSequence() async {
+    final gen = _sequenceGen;
+    _paused = false;
 
-        await Future.delayed(const Duration(milliseconds: 1500));
-        if (!mounted || _paused) return;
-        _barMessageController.forward();
+    bool aborted() => !mounted || gen != _sequenceGen;
 
-        await Future.delayed(const Duration(milliseconds: 1200));
-        if (!mounted || _paused) return;
-        if (widget.data.dayWithMostMessages != null) {
-          _dayTitleController.forward();
-          await Future.delayed(const Duration(milliseconds: 1500));
-          if (!mounted || _paused) return;
-          _dayDateController.forward();
-        }
+    if (aborted()) return;
+    if (_titleFadeController.value < 1.0) {
+      await _titleFadeController.forward();
+    }
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
 
+    await Future.delayed(const Duration(milliseconds: 1200));
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    if (_titlePositionController.value < 1.0) {
+      await _titlePositionController.forward();
+    }
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    await _runParticipantsBarsAndDates(gen);
+  }
+
+  Future<void> _runParticipantsBarsAndDates(int gen) async {
+    bool aborted() => !mounted || gen != _sequenceGen;
+
+    for (var i = 0; i < _participantControllers.length; i++) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (aborted()) return;
+      await _waitUntilUnpaused();
+      if (aborted()) return;
+      if (_participantControllers[i].value < 1.0) {
+        await _participantControllers[i].forward();
+      }
+      if (aborted()) return;
+      await _waitUntilUnpaused();
+      if (aborted()) return;
+    }
+
+    await Future.delayed(const Duration(milliseconds: 1200));
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    if (_barController.value < 1.0) {
+      await _barController.forward();
+    }
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    await Future.delayed(const Duration(milliseconds: 1500));
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    if (_barMessageController.value < 1.0) {
+      await _barMessageController.forward();
+    }
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    await Future.delayed(const Duration(milliseconds: 1200));
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    if (widget.data.dayWithMostMessages != null) {
+      if (_dayTitleController.value < 1.0) {
+        await _dayTitleController.forward();
+      }
+      if (aborted()) return;
+      await Future.delayed(const Duration(milliseconds: 1500));
+      if (aborted()) return;
+      await _waitUntilUnpaused();
+      if (aborted()) return;
+      if (_dayDateController.value < 1.0) {
+        await _dayDateController.forward();
+      }
+      if (aborted()) return;
+      await _waitUntilUnpaused();
+      if (aborted()) return;
+    }
+
+    await Future.delayed(const Duration(milliseconds: 2000));
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    if (widget.data.monthWithMostMessages != null) {
+      if (_monthTitleController.value < 1.0) {
+        await _monthTitleController.forward();
+      }
+      if (aborted()) return;
+      await Future.delayed(const Duration(milliseconds: 1500));
+      if (aborted()) return;
+      await _waitUntilUnpaused();
+      if (aborted()) return;
+      if (_monthDateController.value < 1.0) {
+        await _monthDateController.forward();
+      }
+      if (aborted()) return;
+      final monthNum =
+          _getMonthKeyMonthNumber(widget.data.monthWithMostMessages!);
+      if (monthNum != null && _getMonthMessage(monthNum).isNotEmpty) {
         await Future.delayed(const Duration(milliseconds: 2000));
-        if (!mounted || _paused) return;
-        if (widget.data.monthWithMostMessages != null) {
-          _monthTitleController.forward();
-          await Future.delayed(const Duration(milliseconds: 1500));
-          if (!mounted || _paused) return;
-          _monthDateController.forward();
-          final monthNum =
-              _getMonthKeyMonthNumber(widget.data.monthWithMostMessages!);
-          if (monthNum != null && _getMonthMessage(monthNum).isNotEmpty) {
-            await Future.delayed(const Duration(milliseconds: 2000));
-            if (!mounted || _paused) return;
-            _monthPhraseController.forward();
-          }
+        if (aborted()) return;
+        await _waitUntilUnpaused();
+        if (aborted()) return;
+        if (_monthPhraseController.value < 1.0) {
+          await _monthPhraseController.forward();
         }
       }
     }
-
-    animateNext(0);
   }
 
   @override
@@ -786,6 +857,7 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
   }
 
   void resetAnimations() {
+    _sequenceGen++;
     _paused = false;
     _titleFadeController.reset();
     _titlePositionController.reset();
@@ -797,6 +869,24 @@ class WrappedSecondScreenState extends State<WrappedSecondScreen>
     _monthTitleController.reset();
     _monthDateController.reset();
     _monthPhraseController.reset();
-    _startAnimations();
+    _runAnimationSequence();
+  }
+
+  void jumpAnimationsToEnd() {
+    _sequenceGen++;
+    _paused = false;
+    _titleFadeController.value = 1.0;
+    _titlePositionController.value = 1.0;
+    for (final c in _participantControllers) {
+      c.value = 1.0;
+    }
+    _barController.value = 1.0;
+    _barMessageController.value = 1.0;
+    _dayTitleController.value = 1.0;
+    _dayDateController.value = 1.0;
+    _monthTitleController.value = 1.0;
+    _monthDateController.value = 1.0;
+    _monthPhraseController.value = 1.0;
+    if (mounted) setState(() {});
   }
 }
