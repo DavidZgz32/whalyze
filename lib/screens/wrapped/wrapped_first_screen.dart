@@ -29,7 +29,6 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
   late AnimationController _firstMessageController;
   late AnimationController _daysController;
   late AnimationController _randomMessageController;
-  late AnimationController _exitSlideController;
 
   late Animation<double> _titleFadeAnimation;
   late Animation<double> _titlePositionAnimation;
@@ -40,7 +39,6 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
   late Animation<double> _firstMessageAnimation;
   late Animation<double> _daysAnimation;
   late Animation<double> _randomMessageAnimation;
-  late Animation<Offset> _exitSlideAnimation;
 
   String? _randomMessage; // Mensaje aleatorio calculado una sola vez
   bool _paused = false;
@@ -96,11 +94,6 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
       duration: const Duration(milliseconds: 1000),
     );
 
-    _exitSlideController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-
     // Crear animaciones
     _titleFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
@@ -149,14 +142,6 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
         curve: Curves.easeOut,
       ),
     );
-
-    _exitSlideAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: const Offset(-1.2, 0),
-    ).animate(CurvedAnimation(
-      parent: _exitSlideController,
-      curve: Curves.easeInOut,
-    ));
 
     // Iniciar animaciones
     _startAnimations();
@@ -240,10 +225,6 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
                               if (!mounted || _paused || gen != _animationGeneration) return;
                               _randomMessageController.forward().then((_) {
                                 if (!mounted || _paused || gen != _animationGeneration) return;
-                                Future.delayed(const Duration(milliseconds: 2500), () {
-                                  if (!mounted || _paused || gen != _animationGeneration) return;
-                                  _exitSlideController.forward();
-                                });
                               });
                             });
                           });
@@ -309,7 +290,6 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
     _firstMessageController.reset();
     _daysController.reset();
     _randomMessageController.reset();
-    _exitSlideController.reset();
     _startAnimations();
   }
 
@@ -326,7 +306,6 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
     _firstMessageController.value = 1.0;
     _daysController.value = 1.0;
     _randomMessageController.value = 1.0;
-    _exitSlideController.value = 1.0;
     if (mounted) setState(() {});
   }
 
@@ -342,7 +321,6 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
     _firstMessageController.stop(canceled: false);
     _daysController.stop(canceled: false);
     _randomMessageController.stop(canceled: false);
-    _exitSlideController.stop(canceled: false);
   }
 
   void resumeAnimations() {
@@ -385,10 +363,6 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
                               if (!mounted || _paused || gen != _animationGeneration) return;
                               _randomMessageController.forward().then((_) {
                                 if (!mounted || _paused || gen != _animationGeneration) return;
-                                Future.delayed(const Duration(milliseconds: 2500), () {
-                                  if (!mounted || _paused || gen != _animationGeneration) return;
-                                  _exitSlideController.forward();
-                                });
                               });
                             });
                           });
@@ -430,10 +404,6 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
                               if (!mounted || _paused || gen != _animationGeneration) return;
                               _randomMessageController.forward().then((_) {
                                 if (!mounted || _paused || gen != _animationGeneration) return;
-                                Future.delayed(const Duration(milliseconds: 2500), () {
-                                  if (!mounted || _paused || gen != _animationGeneration) return;
-                                  _exitSlideController.forward();
-                                });
                               });
                             });
                           });
@@ -467,10 +437,6 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
                             if (!mounted || _paused || gen != _animationGeneration) return;
                             _randomMessageController.forward().then((_) {
                               if (!mounted || _paused || gen != _animationGeneration) return;
-                              Future.delayed(const Duration(milliseconds: 2500), () {
-                                if (!mounted || _paused || gen != _animationGeneration) return;
-                                _exitSlideController.forward();
-                              });
                             });
                           });
                         });
@@ -500,10 +466,6 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
                           if (!mounted || _paused || gen != _animationGeneration) return;
                           _randomMessageController.forward().then((_) {
                             if (!mounted || _paused || gen != _animationGeneration) return;
-                            Future.delayed(const Duration(milliseconds: 2500), () {
-                              if (!mounted || _paused || gen != _animationGeneration) return;
-                              _exitSlideController.forward();
-                            });
                           });
                         });
                       });
@@ -529,10 +491,6 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
                         if (!mounted || _paused || gen != _animationGeneration) return;
                         _randomMessageController.forward().then((_) {
                           if (!mounted || _paused || gen != _animationGeneration) return;
-                          Future.delayed(const Duration(milliseconds: 2500), () {
-                            if (!mounted || _paused || gen != _animationGeneration) return;
-                            _exitSlideController.forward();
-                          });
                         });
                       });
                     });
@@ -556,10 +514,6 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
                 if (!mounted || _paused || gen != _animationGeneration) return;
                 _randomMessageController.forward().then((_) {
                   if (!mounted || _paused || gen != _animationGeneration) return;
-                  Future.delayed(const Duration(milliseconds: 2500), () {
-                    if (!mounted || _paused || gen != _animationGeneration) return;
-                    _exitSlideController.forward();
-                  });
                 });
               });
             });
@@ -574,10 +528,6 @@ _daysController.forward().then((_) {
           if (!mounted || _paused || gen != _animationGeneration) return;
           _randomMessageController.forward().then((_) {
             if (!mounted || _paused || gen != _animationGeneration) return;
-            Future.delayed(const Duration(milliseconds: 2500), () {
-              if (!mounted || _paused || gen != _animationGeneration) return;
-              _exitSlideController.forward();
-            });
           });
         });
       });
@@ -586,10 +536,6 @@ _daysController.forward().then((_) {
     if (_randomMessageController.value < 1) {
         _randomMessageController.forward().then((_) {
           if (!mounted || _paused || gen != _animationGeneration) return;
-          Future.delayed(const Duration(milliseconds: 2500), () {
-            if (!mounted || _paused || gen != _animationGeneration) return;
-            _exitSlideController.forward();
-          });
         });
       }
     }
@@ -617,7 +563,6 @@ _daysController.forward().then((_) {
     _firstMessageController.dispose();
     _daysController.dispose();
     _randomMessageController.dispose();
-    _exitSlideController.dispose();
     super.dispose();
   }
 
@@ -678,9 +623,7 @@ _daysController.forward().then((_) {
     return SizedBox(
       width: double.infinity,
       height: double.infinity,
-      child: SlideTransition(
-        position: _exitSlideAnimation,
-        child: Stack(
+      child: Stack(
           children: [
             // Título que aparece en el centro y se desplaza hacia arriba
             AnimatedBuilder(
@@ -882,7 +825,6 @@ _daysController.forward().then((_) {
             ),
           ),
           ],
-        ),
       ),
     );
   }

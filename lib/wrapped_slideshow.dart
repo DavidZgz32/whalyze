@@ -53,14 +53,6 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
   /// Último progreso de barra [0,1] al salir de cada índice; 1 = vista completa.
   final List<double?> _savedProgress = List<double?>.filled(9, null);
 
-  /// Al repetir una diapositiva, las siguientes deben volver a animarse desde cero.
-  void _invalidateDownstreamScreens(int fromIndex) {
-    for (var i = fromIndex + 1; i < _totalScreens; i++) {
-      _everVisited[i] = false;
-      _savedProgress[i] = null;
-    }
-  }
-
   final GlobalKey<WrappedFirstScreenState> _firstScreenKey =
       GlobalKey<WrappedFirstScreenState>();
   final GlobalKey<WrappedSecondScreenState> _secondScreenKey =
@@ -425,34 +417,6 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
     _wrappedNavLog('goToPrevious DONE screen=$_currentScreen');
   }
 
-  void _restartCurrentScreen() {
-    _progressController?.stop();
-    _progressController?.reset();
-    _savedProgress[_currentScreen] = 0.0;
-    _invalidateDownstreamScreens(_currentScreen);
-    setState(() {
-      _isPaused = false;
-    });
-    _startProgressBarForward();
-    if (_currentScreen == 0) {
-      _firstScreenKey.currentState?.resetAnimations();
-    } else if (_currentScreen == 1) {
-      _secondScreenKey.currentState?.resetAnimations();
-    } else if (_currentScreen == 2) {
-      _thirdScreenKey.currentState?.resetAnimations();
-    } else if (_currentScreen == 3) {
-      _fifthScreenKey.currentState?.resetAnimations();
-    } else if (_currentScreen == 4) {
-      _sixthScreenKey.currentState?.resetAnimations();
-    } else if (_currentScreen == 5) {
-      _seventhScreenKey.currentState?.resetAnimations();
-    } else if (_currentScreen == 6) {
-      _eighthScreenKey.currentState?.resetAnimations();
-    } else if (_currentScreen == 7) {
-      _wordsScreenKey.currentState?.resetAnimations();
-    }
-  }
-
   double _chromeIconRowTop(BuildContext context) {
     final pad = MediaQuery.of(context).padding.top;
     final barH = (_totalScreens * 4) + ((_totalScreens - 1) * 2);
@@ -478,17 +442,8 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
       _goToPreviousScreen();
       return;
     }
-    final secondsPerScreen =
-        WrappedScreenDurations.getDurationMs(_currentScreen) / 1000.0;
-    final progressSeconds = bar * secondsPerScreen;
-    if (bar >= 0.5 || progressSeconds >= 4) {
-      _wrappedNavLog('LEFT → restart first screen');
-      _restartCurrentScreen();
-    } else {
-      _wrappedNavLog(
-        'LEFT on first screen: no-op (bar<0.5 and <4s) bar=$bar sec=$progressSeconds',
-      );
-    }
+    // Primera pantalla: la franja izquierda no hace nada (no reinicia barra ni animaciones).
+    _wrappedNavLog('LEFT on first screen: no-op bar=$bar');
   }
 
   void _onNavRightStripTap() {
