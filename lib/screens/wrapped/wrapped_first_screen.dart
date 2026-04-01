@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../whatsapp_processor.dart';
 import '../../utils/participant_utils.dart';
+import 'wrapped_intro_shared.dart';
 
 /// Pantalla 1 del wrapped (índice 0): Bienvenid@ a tu Whatsapp Wrapped (chat 1 a 1).
 class WrappedFirstScreen extends StatefulWidget {
@@ -48,8 +49,9 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
   void initState() {
     super.initState();
 
-    // Calcular mensaje aleatorio una sola vez
-    _calculateRandomMessage();
+    _randomMessage = WrappedIntroShared.randomPeriodMessage(
+      WrappedIntroShared.daysSinceFirstMessage(widget.data.firstMessageDate),
+    );
 
     // Inicializar controladores de animación (todo distribuido en ~18-19 segundos)
     _titleFadeController = AnimationController(
@@ -147,48 +149,6 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
     _startAnimations();
   }
 
-  void _calculateRandomMessage() {
-    // Calcular días transcurridos
-    int daysSinceStart = 0;
-    if (widget.data.firstMessageDate != null) {
-      try {
-        final firstDate = DateTime.parse(widget.data.firstMessageDate!);
-        daysSinceStart = DateTime.now().difference(firstDate).inDays;
-      } catch (e) {
-        // Ignorar errores de parsing
-      }
-    }
-
-    if (daysSinceStart > 0) {
-      // Función para formatear números grandes con puntos como separadores de miles
-      String formatNumber(int number) {
-        final String numberStr = number.toString();
-        final StringBuffer result = StringBuffer();
-        for (int i = 0; i < numberStr.length; i++) {
-          if (i > 0 && (numberStr.length - i) % 3 == 0) {
-            result.write('.');
-          }
-          result.write(numberStr[i]);
-        }
-        return result.toString();
-      }
-
-      final random = DateTime.now().millisecondsSinceEpoch % 3;
-      if (random == 0) {
-        final heartbeats = formatNumber(100800 * daysSinceStart);
-        _randomMessage =
-            'En este periodo, vuestro corazón ha latido más de $heartbeats veces.';
-      } else if (random == 1) {
-        final tiktokVideos = formatNumber(34000000 * daysSinceStart);
-        _randomMessage =
-            'Durante este tiempo se han publicado más de $tiktokVideos vídeos en TikTok.';
-      } else {
-        final births = formatNumber(385000 * daysSinceStart);
-        _randomMessage = 'En este tiempo han nacido $births bebés en el mundo';
-      }
-    }
-  }
-
   void _startAnimations() {
     _paused = false;
     final gen = ++_animationGeneration;
@@ -239,20 +199,6 @@ class WrappedFirstScreenState extends State<WrappedFirstScreen>
         });
       });
     });
-  }
-
-  /// Trunca [text] a máximo [maxLen] caracteres sin cortar palabras.
-  /// Si el corte quedaría en medio de una palabra, se deja la palabra entera.
-  static String _truncateAtWordBoundary(String text, int maxLen) {
-    if (text.length <= maxLen) return text;
-    int endIndex = maxLen;
-    if (endIndex < text.length &&
-        text[endIndex] != ' ' &&
-        (endIndex > 0 && text[endIndex - 1] != ' ')) {
-      final nextSpace = text.indexOf(' ', endIndex);
-      endIndex = nextSpace == -1 ? text.length : nextSpace;
-    }
-    return '${text.substring(0, endIndex)}...';
   }
 
   static const double _participantBallSize = 40.0;
@@ -571,47 +517,16 @@ _daysController.forward().then((_) {
     // Obtener el primer mensaje
     final firstMessageText = widget.data.firstMessageText;
 
-    // Calcular días transcurridos
-    int daysSinceStart = 0;
-    if (widget.data.firstMessageDate != null) {
-      try {
-        final firstDate = DateTime.parse(widget.data.firstMessageDate!);
-        daysSinceStart = DateTime.now().difference(firstDate).inDays;
-      } catch (e) {
-        // Ignorar errores de parsing
-      }
-    }
-
-    // Obtener fecha del primer mensaje para mostrar "el primer día"
-    String firstDayText = '';
-    if (widget.data.firstMessageDate != null) {
-      try {
-        final date = DateTime.parse(widget.data.firstMessageDate!);
-        final months = [
-          'enero',
-          'febrero',
-          'marzo',
-          'abril',
-          'mayo',
-          'junio',
-          'julio',
-          'agosto',
-          'septiembre',
-          'octubre',
-          'noviembre',
-          'diciembre'
-        ];
-        firstDayText =
-            'el ${date.day} de ${months[date.month - 1]} de ${date.year}';
-      } catch (e) {
-        // Ignorar errores de parsing
-      }
-    }
+    final daysSinceStart = WrappedIntroShared.daysSinceFirstMessage(
+      widget.data.firstMessageDate,
+    );
+    final firstDayText =
+        WrappedIntroShared.firstDayPhrase(widget.data.firstMessageDate);
 
     // Limitar el primer mensaje a 72 caracteres sin cortar palabras
     final limitedFirstMessage =
         firstMessageText != null && firstMessageText.isNotEmpty
-            ? _truncateAtWordBoundary(firstMessageText, 72)
+            ? WrappedIntroShared.truncateAtWordBoundary(firstMessageText, 72)
             : null;
 
     final screenHeight = MediaQuery.of(context).size.height;
@@ -653,11 +568,7 @@ _daysController.forward().then((_) {
                     'Bienvenid@ a tu Whatsapp Wrapped!',
                     textAlign: TextAlign.center,
                     maxLines: 2,
-                    style: GoogleFonts.inter(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
+                    style: WrappedIntroShared.welcomeTitleStyle(),
                   ),
                 ),
               );
@@ -784,12 +695,7 @@ _daysController.forward().then((_) {
                             ? 'todo empezó con un... "$limitedFirstMessage"'
                             : 'todo empezó con un...',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white.withOpacity(0.9),
-                      fontStyle: FontStyle.italic,
-                    ),
+                    style: WrappedIntroShared.firstMessageBlockStyle(),
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -799,11 +705,7 @@ _daysController.forward().then((_) {
                   child: Text(
                     'Desde entonces han pasado $daysSinceStart días',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white.withOpacity(0.9),
-                    ),
+                    style: WrappedIntroShared.daysSinceBlockStyle(),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -814,11 +716,7 @@ _daysController.forward().then((_) {
                     child: Text(
                       _randomMessage!,
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.poppins(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.white.withOpacity(0.85),
-                      ),
+                      style: WrappedIntroShared.periodFactBlockStyle(),
                     ),
                   ),
               ],

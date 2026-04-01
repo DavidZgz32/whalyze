@@ -15,12 +15,21 @@ import 'screens/wrapped/wrapped_seventh_screen.dart';
 import 'screens/wrapped/wrapped_eighth_screen.dart';
 import 'screens/wrapped/wrapped_words_screen.dart';
 import 'screens/wrapped/wrapped_final_screen.dart';
+import 'screens/wrapped/wrapped_group_first_screen.dart';
+import 'screens/wrapped/wrapped_group_second_screen.dart';
+import 'screens/wrapped/wrapped_group_third_screen.dart';
+import 'screens/wrapped/wrapped_group_fourth_screen.dart';
+import 'screens/wrapped/wrapped_group_fifth_screen.dart';
+import 'screens/wrapped/wrapped_group_sixth_screen.dart';
+import 'screens/wrapped/wrapped_group_seventh_screen.dart';
+import 'screens/wrapped/wrapped_group_eighth_screen.dart';
+import 'screens/wrapped/wrapped_group_ninth_screen.dart';
 
 /// Debug: filtra en consola / DevTools por `WrappedNav`.
 void _wrappedNavLog(String message) =>
     log(message, name: 'WrappedNav');
 
-/// Slideshow unificado del Wrapped (chat 1 a 1). Usado al subir un chat o al abrirlo desde favoritos.
+/// Slideshow del Wrapped (1 a 1 o grupal si hay más de 2 participantes).
 /// Índice de las 9 pantallas: lib/WRAPPED_PANTALLAS.md
 class WrappedSlideshow extends StatefulWidget {
   final WhatsAppData data;
@@ -55,6 +64,8 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
 
   final GlobalKey<WrappedFirstScreenState> _firstScreenKey =
       GlobalKey<WrappedFirstScreenState>();
+  final GlobalKey<WrappedGroupFirstScreenState> _groupFirstScreenKey =
+      GlobalKey<WrappedGroupFirstScreenState>();
   final GlobalKey<WrappedSecondScreenState> _secondScreenKey =
       GlobalKey<WrappedSecondScreenState>();
   final GlobalKey<WrappedThirdScreenState> _thirdScreenKey =
@@ -69,6 +80,8 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
       GlobalKey<WrappedEighthScreenState>();
   final GlobalKey<WrappedWordsScreenState> _wordsScreenKey =
       GlobalKey<WrappedWordsScreenState>();
+
+  bool get _isGroupChat => widget.data.participants.length > 2;
 
   @override
   void initState() {
@@ -88,7 +101,11 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
   void _pauseWrappedScreen(int index) {
     switch (index) {
       case 0:
-        _firstScreenKey.currentState?.pauseAnimations();
+        if (_isGroupChat) {
+          _groupFirstScreenKey.currentState?.pauseAnimations();
+        } else {
+          _firstScreenKey.currentState?.pauseAnimations();
+        }
         break;
       case 1:
         _secondScreenKey.currentState?.pauseAnimations();
@@ -119,7 +136,11 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
   void _jumpWrappedScreenToEnd(int index) {
     switch (index) {
       case 0:
-        _firstScreenKey.currentState?.jumpAnimationsToEnd();
+        if (_isGroupChat) {
+          _groupFirstScreenKey.currentState?.jumpAnimationsToEnd();
+        } else {
+          _firstScreenKey.currentState?.jumpAnimationsToEnd();
+        }
         break;
       case 1:
         _secondScreenKey.currentState?.jumpAnimationsToEnd();
@@ -150,7 +171,11 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
   void _resumeWrappedScreenPartial(int index) {
     switch (index) {
       case 0:
-        _firstScreenKey.currentState?.resumeAnimations();
+        if (_isGroupChat) {
+          _groupFirstScreenKey.currentState?.resumeAnimations();
+        } else {
+          _firstScreenKey.currentState?.resumeAnimations();
+        }
         break;
       case 1:
         _secondScreenKey.currentState?.resumeAnimations();
@@ -314,7 +339,11 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
       _progressController!.stop(canceled: false);
     }
     if (_currentScreen == 0) {
-      _firstScreenKey.currentState?.pauseAnimations();
+      if (_isGroupChat) {
+        _groupFirstScreenKey.currentState?.pauseAnimations();
+      } else {
+        _firstScreenKey.currentState?.pauseAnimations();
+      }
     } else if (_currentScreen == 1) {
       _secondScreenKey.currentState?.pauseAnimations();
     } else if (_currentScreen == 2) {
@@ -338,7 +367,11 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
     setState(() => _isPaused = false);
     _progressController?.forward();
     if (_currentScreen == 0) {
-      _firstScreenKey.currentState?.resumeAnimations();
+      if (_isGroupChat) {
+        _groupFirstScreenKey.currentState?.resumeAnimations();
+      } else {
+        _firstScreenKey.currentState?.resumeAnimations();
+      }
     } else if (_currentScreen == 1) {
       _secondScreenKey.currentState?.resumeAnimations();
     } else if (_currentScreen == 2) {
@@ -468,6 +501,42 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
 
   Widget _wrappedPage(int index) {
     final data = widget.data;
+    if (_isGroupChat) {
+      switch (index) {
+        case 0:
+          return WrappedGroupFirstScreen(
+            key: _groupFirstScreenKey,
+            data: data,
+            totalScreens: _totalScreens,
+          );
+        case 1:
+          return const WrappedGroupSecondScreen(totalScreens: _totalScreens);
+        case 2:
+          return const WrappedGroupThirdScreen(totalScreens: _totalScreens);
+        case 3:
+          return const WrappedGroupFourthScreen(totalScreens: _totalScreens);
+        case 4:
+          return const WrappedGroupFifthScreen(totalScreens: _totalScreens);
+        case 5:
+          return const WrappedGroupSixthScreen(totalScreens: _totalScreens);
+        case 6:
+          return const WrappedGroupSeventhScreen(totalScreens: _totalScreens);
+        case 7:
+          return const WrappedGroupEighthScreen(totalScreens: _totalScreens);
+        case 8:
+          return WrappedGroupNinthScreen(
+            totalScreens: _totalScreens,
+            onGoHome: widget.onClose,
+          );
+        default:
+          return WrappedPlaceholderScreen(
+            screenNumber: index,
+            totalScreens: _totalScreens,
+            title: null,
+          );
+      }
+    }
+
     switch (index) {
       case 0:
         return WrappedFirstScreen(

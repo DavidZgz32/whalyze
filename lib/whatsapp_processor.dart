@@ -4,6 +4,10 @@ class WhatsAppData {
   final List<String> participants;
   final List<String> leftParticipants;
   final int totalParticipantsWhoLeft;
+
+  /// Último nombre del grupo según la última línea del export del tipo
+  /// `… cambió el nombre del grupo de "…" a "…"`.
+  final String? groupNameFromExport;
   
   // Primer mensaje
   final String? firstMessageDate; // YYYY-MM-DD
@@ -62,6 +66,7 @@ class WhatsAppData {
     required this.participants,
     required this.leftParticipants,
     required this.totalParticipantsWhoLeft,
+    this.groupNameFromExport,
     this.firstMessageDate,
     this.firstMessageUser,
     this.firstMessageText,
@@ -103,6 +108,7 @@ class WhatsAppData {
       'participants': participants,
       'leftParticipants': leftParticipants,
       'totalParticipantsWhoLeft': totalParticipantsWhoLeft,
+      'groupNameFromExport': groupNameFromExport,
       'firstMessageDate': firstMessageDate,
       'firstMessageUser': firstMessageUser,
       'firstMessageText': firstMessageText,
@@ -149,6 +155,7 @@ class WhatsAppData {
       participants: List<String>.from(json['participants'] as List? ?? []),
       leftParticipants: List<String>.from(json['leftParticipants'] as List? ?? []),
       totalParticipantsWhoLeft: json['totalParticipantsWhoLeft'] as int? ?? 0,
+      groupNameFromExport: json['groupNameFromExport'] as String?,
       firstMessageDate: json['firstMessageDate'] as String?,
       firstMessageUser: json['firstMessageUser'] as String?,
       firstMessageText: json['firstMessageText'] as String?,
@@ -258,6 +265,36 @@ class _CurrentMessage {
 
 /// Procesador principal de archivos de WhatsApp
 class WhatsAppProcessor {
+  static final _stripBidiMarks = RegExp(r'[\u200E\u200F\u202A-\u202E]');
+
+  /// Español: `cambió el nombre del grupo de "A" a "B"`
+  static final _groupRenameEs = RegExp(
+    r'cambió el nombre del grupo de "([^"]*)" a "([^"]*)"',
+    unicode: true,
+  );
+
+  /// Inglés: `changed the group name from "A" to "B"`
+  static final _groupRenameEn = RegExp(
+    r'changed the group name from "([^"]*)" to "([^"]*)"',
+    caseSensitive: false,
+  );
+
+  /// Recorre el TXT y devuelve el nombre nuevo de la **última** línea de cambio de nombre del grupo.
+  static String? extractLastGroupNameFromExport(String content) {
+    String? last;
+    for (final raw in content.split('\n')) {
+      final line = raw.replaceAll(_stripBidiMarks, '');
+      final m = _groupRenameEs.firstMatch(line) ?? _groupRenameEn.firstMatch(line);
+      if (m != null) {
+        final name = m.group(2)?.trim();
+        if (name != null && name.isNotEmpty) {
+          last = name;
+        }
+      }
+    }
+    return last;
+  }
+
   // Patrones regex para Android e iOS
   static final androidLineRegex = RegExp(
     r'^(\d{1,2})/(\d{1,2})/(\d{2,4}),\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s[-–]\s([^:]+):\s?([\s\S]*)$',
@@ -271,6 +308,7 @@ class WhatsAppProcessor {
 
   /// Procesa el contenido de un archivo de WhatsApp y extrae información completa
   static WhatsAppData processFile(String content) {
+    final groupNameFromExport = extractLastGroupNameFromExport(content);
     final lines = content.split('\n');
     final participants = <String>{};
     final leftParticipants = <String>{};
@@ -1075,6 +1113,7 @@ class WhatsAppProcessor {
       participants: participantsArray,
       leftParticipants: leftParticipants.toList(),
       totalParticipantsWhoLeft: leftParticipants.length,
+      groupNameFromExport: groupNameFromExport,
       firstMessageDate: firstMessageDate,
       firstMessageUser: firstMessageUser,
       firstMessageText: firstMessageText,

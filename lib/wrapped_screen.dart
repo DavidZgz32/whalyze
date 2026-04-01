@@ -47,6 +47,16 @@ class _WrappedScreenState extends State<WrappedScreen> {
     return parts.isEmpty ? 'WHALYZE ${DateTime.now().year}' : parts.join(' - ');
   }
 
+  /// Grupo: nombre del export si hay línea de cambio de nombre; si no, participantes.
+  static String favoritesTitle(WhatsAppData data) {
+    final isGroup = data.participants.length > 2;
+    final group = data.groupNameFromExport?.trim();
+    if (isGroup && group != null && group.isNotEmpty) {
+      return group;
+    }
+    return _titleFromParticipants(data.participants);
+  }
+
   Future<void> _saveWrapped() async {
     if (_hasBeenSaved || _data == null) return;
 
@@ -54,7 +64,7 @@ class _WrappedScreenState extends State<WrappedScreen> {
       _hasBeenSaved = true;
       final wrapped = WrappedModel(
         id: 'wrapped_${DateTime.now().millisecondsSinceEpoch}',
-        title: _titleFromParticipants(_data!.participants),
+        title: favoritesTitle(_data!),
         createdAt: DateTime.now(),
         data: _data!.toJson(),
         participants: _data!.participants,

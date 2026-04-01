@@ -1,6 +1,8 @@
-# Índice de pantallas del Wrapped (chat de 2 personas)
+# Índice de pantallas del Wrapped
 
-**Tipo:** Chat entre 2 personas (1 a 1). Las pantallas para chats grupales serán distintas en el futuro.
+**De dónde sale cada dato (export, favoritos, campos del modelo):** ver [`WRAPPED_DATOS.md`](WRAPPED_DATOS.md).
+
+**Tipo:** Chat **1 a 1** (≤2 participantes) o **grupal** (>2 participantes); el slideshow elige el flujo en `wrapped_slideshow.dart`.
 
 Orden y contenido de cada pantalla. El **índice** es el que se usa en código (`_currentScreen`, `getDurationMs(screenIndex)`).
 
