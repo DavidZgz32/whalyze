@@ -83,6 +83,21 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
 
   bool get _isGroupChat => widget.data.participants.length > 2;
 
+  /// Tras las animaciones de cada pantalla grupal (índices 0–7), cuánto dura
+  /// la barra de margen antes del auto-avance. Ver `WRAPPED_GRUPO_DURACION.md`.
+  static const int _groupPostAnimationHoldMs = 1000;
+
+  /// Slideshow en pausa cuando el grupo ya terminó animaciones y debe arrancar
+  /// solo la barra de 1 s al reanudar.
+  bool _groupWaitingToStartPostAnimationBar = false;
+
+  /// Grupal 0–7: true mientras las animaciones de la pantalla pueden seguir;
+  /// la barra lineal llega como máximo hasta la fracción
+  /// `D_estimado/(D_estimado+hold)` y espera si hace falta. Tras
+  /// [onGroupScreenAnimationsComplete] → false y la barra termina el tramo hasta 1
+  /// en el tiempo de hold (estilo Instagram).
+  bool _groupSlideContentPhaseActive = false;
+
   @override
   void initState() {
     super.initState();
@@ -95,6 +110,11 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
     _everVisited[0] = true;
     _createProgressControllerForCurrentScreen();
     _fadeController.forward();
+    if (_isGroupChat && _currentScreen < 8) {
+      _groupSlideContentPhaseActive = true;
+    }
+    // Grupal 0–7: barra lineal continua (estimación contenido + hold).
+    // Individual: misma barra según WrappedScreenDurations.
     _startProgressBarForward();
   }
 
@@ -222,6 +242,9 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
 
     final saved = _savedProgress[index];
     if (saved != null && saved >= 1.0) {
+      if (_isGroupChat && index < 8) {
+        _groupSlideContentPhaseActive = false;
+      }
       // Asignar 1.0 dispara `AnimationStatus.completed` y reprogramaba el auto-avance:
       // un frame en la pantalla anterior y luego salto otra vez a la siguiente ("flash").
       final c = _progressController!;
@@ -232,6 +255,25 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
         if (!mounted || index != _currentScreen) return;
         _jumpWrappedScreenToEnd(index);
       });
+      return;
+    }
+
+    // Grupal 0–7: barra determinada; durante fase contenido se limita el avance.
+    if (_isGroupChat && index < 8) {
+      final v = firstVisit ? 0.0 : (saved ?? 0.0);
+      _groupSlideContentPhaseActive = firstVisit || v == 0.0;
+      _progressController!.value = v;
+      if (firstVisit) {
+        _startProgressBarForward();
+      } else {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || index != _currentScreen) return;
+          _resumeWrappedScreenPartial(index);
+          if (!_groupSlideContentPhaseActive && v < 1.0) {
+            _startProgressBarForward();
+          }
+        });
+      }
       return;
     }
 
@@ -249,28 +291,109 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
     }
   }
 
+  /// Tiempo estimado solo de animaciones de contenido (grupal); el hold se suma aparte.
+  int _groupContentEstimateMs(int screenIndex) {
+    final n = widget.data.participants.length;
+    switch (screenIndex) {
+      case 0:
+        return 32000;
+      case 1:
+        final rows = math.min(10, n);
+        if (rows <= 0) return 2000;
+        return 800 + rows * 1000 + 600;
+      case 2:
+      case 3:
+      case 4:
+      case 5:
+      case 6:
+      case 7:
+        return 600;
+      default:
+        return 5000;
+    }
+  }
+
+  double _groupClampUpperBoundForScreen(int screenIndex) {
+    final dEst = _groupContentEstimateMs(screenIndex).toDouble();
+    final dHold = _groupPostAnimationHoldMs.toDouble();
+    return dEst / (dEst + dHold);
+  }
+
+  void _onGroupProgressClamp() {
+    if (!mounted) return;
+    if (!_isGroupChat || _currentScreen >= 8) return;
+    if (!_groupSlideContentPhaseActive) return;
+    final c = _progressController;
+    if (c == null || !c.isAnimating) return;
+    final f = _groupClampUpperBoundForScreen(_currentScreen);
+    if (c.value > f) {
+      c.stop(canceled: false);
+      c.value = f;
+    }
+  }
+
   void _createProgressControllerForCurrentScreen() {
     _wrappedNavLog(
       'createProgressController: drop old, new screen=$_currentScreen '
       '(hash=$hashCode)',
     );
+    _progressController?.removeListener(_onGroupProgressClamp);
     _progressController?.removeStatusListener(_onProgressStatusChanged);
     _progressController?.dispose();
 
-    final durationMs =
-        WrappedScreenDurations.getDurationMs(_currentScreen);
+    final bool groupTimeline = _isGroupChat && _currentScreen < 8;
+    final durationMs = groupTimeline
+        ? _groupContentEstimateMs(_currentScreen) + _groupPostAnimationHoldMs
+        : WrappedScreenDurations.getDurationMs(_currentScreen);
     _progressController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: durationMs),
     );
 
     _progressController!.addStatusListener(_onProgressStatusChanged);
+    if (groupTimeline) {
+      _progressController!.addListener(_onGroupProgressClamp);
+    }
+  }
+
+  /// Pantalla grupal 0–7: la animación de contenido terminó; arranca (o encola)
+  /// la barra de [_groupPostAnimationHoldMs].
+  void _onGroupScreenAnimationsComplete(int screenIndex) {
+    if (!_isGroupChat ||
+        screenIndex != _currentScreen ||
+        screenIndex > 7) {
+      _wrappedNavLog(
+        'group anim done IGNORED announced='
+        '$screenIndex current=$_currentScreen group=$_isGroupChat',
+      );
+      return;
+    }
+    _wrappedNavLog(
+      'group anim done announced=$screenIndex → '
+      '${_isPaused ? "QUEUE post-anim bar" : "START post-anim bar"}',
+    );
+    setState(() {
+      _groupSlideContentPhaseActive = false;
+    });
+    if (_isPaused) {
+      _groupWaitingToStartPostAnimationBar = true;
+    } else {
+      _groupWaitingToStartPostAnimationBar = false;
+      if (mounted) {
+        _progressController?.forward();
+      }
+    }
   }
 
   void _onProgressStatusChanged(AnimationStatus status) {
     if (status != AnimationStatus.completed) return;
     if (!mounted) return;
     if (_isPaused) return;
+    if (_isGroupChat &&
+        _currentScreen < 8 &&
+        _groupSlideContentPhaseActive) {
+      return;
+    }
     if (_currentScreen >= _totalScreens - 1) {
       _wrappedNavLog(
         'progress COMPLETED on last screen=$_currentScreen → onAllScreensCompleted',
@@ -304,6 +427,7 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
         return;
       }
 
+      _groupWaitingToStartPostAnimationBar = false;
       _savedProgress[completedIndex] = 1.0;
       _jumpWrappedScreenToEnd(completedIndex);
       _pauseWrappedScreen(completedIndex);
@@ -365,7 +489,24 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
     if (!_isPaused) return;
     if (!mounted) return;
     setState(() => _isPaused = false);
-    _progressController?.forward();
+    if (_groupWaitingToStartPostAnimationBar &&
+        _isGroupChat &&
+        _currentScreen < 8) {
+      _groupWaitingToStartPostAnimationBar = false;
+      _startProgressBarForward();
+    } else if (_isGroupChat &&
+        _currentScreen < 8 &&
+        _groupSlideContentPhaseActive) {
+      final c = _progressController;
+      if (c != null) {
+        final f = _groupClampUpperBoundForScreen(_currentScreen);
+        if (c.isAnimating || c.value < f - 1e-5) {
+          c.forward();
+        }
+      }
+    } else {
+      _progressController?.forward();
+    }
     if (_currentScreen == 0) {
       if (_isGroupChat) {
         _groupFirstScreenKey.currentState?.resumeAnimations();
@@ -405,6 +546,7 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
       _wrappedNavLog('goToNext ABORT (already last)');
       return;
     }
+    _groupWaitingToStartPostAnimationBar = false;
     _progressController?.stop();
     if (!mounted) return;
     _savedProgress[_currentScreen] = _progressController?.value ?? 0.0;
@@ -432,6 +574,7 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
       _wrappedNavLog('goToPrevious ABORT (already first)');
       return;
     }
+    _groupWaitingToStartPostAnimationBar = false;
     _progressController?.stop();
     if (!mounted) return;
     _savedProgress[_currentScreen] = _progressController?.value ?? 0.0;
@@ -493,6 +636,7 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
 
   @override
   void dispose() {
+    _progressController?.removeListener(_onGroupProgressClamp);
     _progressController?.removeStatusListener(_onProgressStatusChanged);
     _progressController?.dispose();
     _fadeController.dispose();
@@ -508,21 +652,44 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
             key: _groupFirstScreenKey,
             data: data,
             totalScreens: _totalScreens,
+            onGroupScreenAnimationsComplete: _onGroupScreenAnimationsComplete,
           );
         case 1:
-          return const WrappedGroupSecondScreen(totalScreens: _totalScreens);
+          return WrappedGroupSecondScreen(
+            data: data,
+            totalScreens: _totalScreens,
+            onGroupScreenAnimationsComplete: _onGroupScreenAnimationsComplete,
+          );
         case 2:
-          return const WrappedGroupThirdScreen(totalScreens: _totalScreens);
+          return WrappedGroupThirdScreen(
+            totalScreens: _totalScreens,
+            onGroupScreenAnimationsComplete: _onGroupScreenAnimationsComplete,
+          );
         case 3:
-          return const WrappedGroupFourthScreen(totalScreens: _totalScreens);
+          return WrappedGroupFourthScreen(
+            totalScreens: _totalScreens,
+            onGroupScreenAnimationsComplete: _onGroupScreenAnimationsComplete,
+          );
         case 4:
-          return const WrappedGroupFifthScreen(totalScreens: _totalScreens);
+          return WrappedGroupFifthScreen(
+            totalScreens: _totalScreens,
+            onGroupScreenAnimationsComplete: _onGroupScreenAnimationsComplete,
+          );
         case 5:
-          return const WrappedGroupSixthScreen(totalScreens: _totalScreens);
+          return WrappedGroupSixthScreen(
+            totalScreens: _totalScreens,
+            onGroupScreenAnimationsComplete: _onGroupScreenAnimationsComplete,
+          );
         case 6:
-          return const WrappedGroupSeventhScreen(totalScreens: _totalScreens);
+          return WrappedGroupSeventhScreen(
+            totalScreens: _totalScreens,
+            onGroupScreenAnimationsComplete: _onGroupScreenAnimationsComplete,
+          );
         case 7:
-          return const WrappedGroupEighthScreen(totalScreens: _totalScreens);
+          return WrappedGroupEighthScreen(
+            totalScreens: _totalScreens,
+            onGroupScreenAnimationsComplete: _onGroupScreenAnimationsComplete,
+          );
         case 8:
           return WrappedGroupNinthScreen(
             totalScreens: _totalScreens,
@@ -644,28 +811,32 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
                   final p = c.value;
                   return Row(
                     children: List.generate(_totalScreens, (index) {
+                      final isCurrent = index == _currentScreen;
                       return Expanded(
                         child: Padding(
                           padding: EdgeInsets.only(
                             right: index < _totalScreens - 1 ? 2 : 0,
                           ),
-                          child: Container(
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.3),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                            child: FractionallySizedBox(
-                              alignment: Alignment.centerLeft,
-                              widthFactor: index < _currentScreen
-                                  ? 1.0
-                                  : index == _currentScreen
-                                      ? p
-                                      : 0.0,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(2),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(2),
+                            child: Container(
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.3),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                              child: FractionallySizedBox(
+                                alignment: Alignment.centerLeft,
+                                widthFactor: index < _currentScreen
+                                    ? 1.0
+                                    : isCurrent
+                                        ? p
+                                        : 0.0,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
                                 ),
                               ),
                             ),

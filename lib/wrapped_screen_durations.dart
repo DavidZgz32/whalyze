@@ -1,4 +1,9 @@
-/// Duración en milisegundos de cada pantalla del wrapped.
+/// Duración en milisegundos de cada pantalla del wrapped **individual**
+/// y de la **última** pantalla (índice 8) en el flujo grupal.
+///
+/// En el flujo **grupal**, los índices 0–7 no usan estos valores: el avance
+/// depende de las animaciones de cada pantalla + 1 s de margen. Ver
+/// `WRAPPED_GRUPO_DURACION.md` y `wrapped_slideshow.dart`.
 /// Modifica estos valores para ajustar cuánto tiempo se muestra cada pantalla.
 class WrappedScreenDurations {
   WrappedScreenDurations._();

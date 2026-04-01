@@ -10,10 +10,14 @@ class WrappedGroupFirstScreen extends StatefulWidget {
   final WhatsAppData data;
   final int totalScreens;
 
+  /// Índice en el slideshow (0). Cuando acaban todas las animaciones de esta pantalla.
+  final ValueChanged<int>? onGroupScreenAnimationsComplete;
+
   const WrappedGroupFirstScreen({
     super.key,
     required this.data,
     required this.totalScreens,
+    this.onGroupScreenAnimationsComplete,
   });
 
   @override
@@ -219,6 +223,10 @@ class WrappedGroupFirstScreenState extends State<WrappedGroupFirstScreen>
         _randomMessage!.isNotEmpty &&
         _randomMessageController.value < 1) {
       await _randomMessageController.forward();
+    }
+    if (aborted()) return;
+    if (mounted) {
+      widget.onGroupScreenAnimationsComplete?.call(0);
     }
   }
 

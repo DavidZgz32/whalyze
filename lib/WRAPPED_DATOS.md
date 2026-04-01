@@ -5,7 +5,8 @@ Documento orientado a desarrollo y producto: qué significa cada pieza de inform
 **Flujo general:** el usuario sube un `.txt` → `WhatsAppProcessor.processFile()` en `whatsapp_processor.dart` devuelve un `WhatsAppData` → el slideshow (`wrapped_slideshow.dart`) elige flujo **individual** (≤2 participantes) o **grupal** (>2) → opcionalmente se guarda en favoritos como `WrappedModel` (`wrapped_screen.dart`, `services/wrapped_storage.dart`).
 
 **Índice de pantallas (orden, widgets):** `WRAPPED_PANTALLAS.md`  
-**Duración por pantalla:** `wrapped_screen_durations.dart`
+**Duración por pantalla (individual + grupal pantalla 9):** `wrapped_screen_durations.dart`  
+**Tiempo en flujo grupal (pantallas 1–8):** `WRAPPED_GRUPO_DURACION.md`
 
 ---
 

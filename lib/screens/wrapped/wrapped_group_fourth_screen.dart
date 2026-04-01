@@ -4,14 +4,21 @@ import 'wrapped_group_placeholder_screen.dart';
 
 class WrappedGroupFourthScreen extends StatelessWidget {
   final int totalScreens;
+  final ValueChanged<int>? onGroupScreenAnimationsComplete;
 
-  const WrappedGroupFourthScreen({super.key, required this.totalScreens});
+  const WrappedGroupFourthScreen({
+    super.key,
+    required this.totalScreens,
+    this.onGroupScreenAnimationsComplete,
+  });
 
   @override
   Widget build(BuildContext context) {
     return WrappedGroupPlaceholderScreen(
       displayNumber: 4,
       totalScreens: totalScreens,
+      slideshowIndex: 3,
+      onGroupScreenAnimationsComplete: onGroupScreenAnimationsComplete,
     );
   }
 }

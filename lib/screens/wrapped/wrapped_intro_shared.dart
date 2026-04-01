@@ -30,6 +30,27 @@ abstract final class WrappedIntroShared {
     return result.toString();
   }
 
+  /// Contador para rankings: &lt;10k con puntos de miles; desde 10k en formato `10k`, `10.5k`, `125k`.
+  static String formatMessageCountForRank(int count) {
+    if (count < 10000) {
+      return formatThousands(count);
+    }
+    final whole = count ~/ 1000;
+    final rem = count % 1000;
+    if (rem == 0) {
+      return '${whole}k';
+    }
+    final k = count / 1000.0;
+    final oneDec = (k * 10).round() / 10;
+    if ((oneDec * 1000).round() == count) {
+      if ((oneDec - oneDec.truncateToDouble()).abs() < 0.001) {
+        return '${oneDec.toInt()}k';
+      }
+      return '${oneDec.toStringAsFixed(1)}k';
+    }
+    return '${whole}k';
+  }
+
   static const List<String> _monthNames = [
     'enero',
     'febrero',
