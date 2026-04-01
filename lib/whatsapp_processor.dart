@@ -1,5 +1,20 @@
 /// Modelo completo de datos procesados de WhatsApp
 class WhatsAppData {
+  /// Convierte un mapa JSON (valores num/int) en `Map<String, int>` de forma tolerante.
+  static Map<String, int> mapStringIntFromJson(dynamic raw) {
+    if (raw == null || raw is! Map) return {};
+    final out = <String, int>{};
+    for (final e in raw.entries) {
+      final v = e.value;
+      if (v is int) {
+        out[e.key.toString()] = v;
+      } else if (v is num) {
+        out[e.key.toString()] = v.round();
+      }
+    }
+    return out;
+  }
+
   // Información básica
   final List<String> participants;
   final List<String> leftParticipants;
@@ -31,8 +46,17 @@ class WhatsAppData {
   
   // Estadísticas de conversación
   final Map<String, int> conversationStarters;
+  /// Tras ≥12 h sin mensajes, el siguiente autor suma 1 (p. ej. rol «Hola chic@s» grupal).
+  final Map<String, int> conversationStartersAfter12h;
   final Map<String, String> averageResponseTimes; // MM:SS o HH:MM:SS
   final Map<String, int> quickResponseCounts;
+
+  /// Palabras tokenizadas (misma regla que `processWords`) por participante.
+  final Map<String, int> participantWordTotals;
+  /// Mensajes entre las 20:00 y las 06:00 (hora local del export), por participante.
+  final Map<String, int> nightOwlMessageCounts;
+  /// Mensajes entre las 06:00 y las 12:00 (hora local del export), por participante.
+  final Map<String, int> earlyBirdMessageCounts;
   
   // Mensajes consecutivos
   final int mostConsecutiveMessages;
@@ -82,8 +106,12 @@ class WhatsAppData {
     required this.monthWithMostMessagesCount,
     required this.longestStreak,
     required this.conversationStarters,
+    required this.conversationStartersAfter12h,
     required this.averageResponseTimes,
     required this.quickResponseCounts,
+    required this.participantWordTotals,
+    required this.nightOwlMessageCounts,
+    required this.earlyBirdMessageCounts,
     required this.mostConsecutiveMessages,
     this.mostConsecutiveUser,
     this.mostConsecutiveDate,
@@ -124,8 +152,12 @@ class WhatsAppData {
       'monthWithMostMessagesCount': monthWithMostMessagesCount,
       'longestStreak': longestStreak,
       'conversationStarters': conversationStarters,
+      'conversationStartersAfter12h': conversationStartersAfter12h,
       'averageResponseTimes': averageResponseTimes,
       'quickResponseCounts': quickResponseCounts,
+      'participantWordTotals': participantWordTotals,
+      'nightOwlMessageCounts': nightOwlMessageCounts,
+      'earlyBirdMessageCounts': earlyBirdMessageCounts,
       'mostConsecutiveMessages': mostConsecutiveMessages,
       'mostConsecutiveUser': mostConsecutiveUser,
       'mostConsecutiveDate': mostConsecutiveDate,
@@ -173,8 +205,16 @@ class WhatsAppData {
       monthWithMostMessagesCount: json['monthWithMostMessagesCount'] as int? ?? 0,
       longestStreak: json['longestStreak'] as int? ?? 0,
       conversationStarters: Map<String, int>.from(json['conversationStarters'] as Map? ?? {}),
+      conversationStartersAfter12h:
+          WhatsAppData.mapStringIntFromJson(json['conversationStartersAfter12h']),
       averageResponseTimes: Map<String, String>.from(json['averageResponseTimes'] as Map? ?? {}),
       quickResponseCounts: Map<String, int>.from(json['quickResponseCounts'] as Map? ?? {}),
+      participantWordTotals:
+          WhatsAppData.mapStringIntFromJson(json['participantWordTotals']),
+      nightOwlMessageCounts:
+          WhatsAppData.mapStringIntFromJson(json['nightOwlMessageCounts']),
+      earlyBirdMessageCounts:
+          WhatsAppData.mapStringIntFromJson(json['earlyBirdMessageCounts']),
       mostConsecutiveMessages: json['mostConsecutiveMessages'] as int? ?? 0,
       mostConsecutiveUser: json['mostConsecutiveUser'] as String?,
       mostConsecutiveDate: json['mostConsecutiveDate'] as String?,
@@ -399,11 +439,17 @@ class WhatsAppProcessor {
 
     // Conversación
     final conversationStarters = <String, int>{};
+    final conversationStartersAfter12h = <String, int>{};
     final responseTimes = <String, List<double>>{};
     final quickResponseCounts = <String, int>{};
     int? lastMessageTime;
     String? lastMessageUser;
     const conversationGapHours = 4;
+    const longSilenceHours = 12;
+
+    final participantWordTotals = <String, int>{};
+    final nightOwlMessageCounts = <String, int>{};
+    final earlyBirdMessageCounts = <String, int>{};
 
     // Estadísticas de palabras
     final wordStats = <String, Map<String, int>>{};
@@ -649,6 +695,9 @@ class WhatsAppProcessor {
               word != 'deleted')
           .toList();
 
+      participantWordTotals[participant] =
+          (participantWordTotals[participant] ?? 0) + words.length;
+
       for (final word in words) {
         final len = word.length;
         if (len >= 3 && len <= 11) {
@@ -783,6 +832,16 @@ class WhatsAppProcessor {
                 (timeRangeCounts[currentMessage.franja] ?? 0) + 1;
             hourlyMessageCounts[currentMessage.hour]++;
 
+            final h = currentMessage.hour;
+            if (h >= 20 || h < 6) {
+              nightOwlMessageCounts[currentMessage.user] =
+                  (nightOwlMessageCounts[currentMessage.user] ?? 0) + 1;
+            }
+            if (h >= 6 && h < 12) {
+              earlyBirdMessageCounts[currentMessage.user] =
+                  (earlyBirdMessageCounts[currentMessage.user] ?? 0) + 1;
+            }
+
             // Incrementar matriz 7x4
             try {
               final dowIdx = toDowIndexFromIso(currentMessage.date);
@@ -827,7 +886,7 @@ class WhatsAppProcessor {
                 '$date ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}:${second.toString().padLeft(2, '0')}')
             .millisecondsSinceEpoch;
 
-        // Verificar si inicia nueva conversación (gap de 4+ horas)
+        // Verificar si inicia nueva conversación (gap de 4+ horas) y silencio largo (12+ h)
         if (lastMessageTime != null) {
           final timeDiffHours =
               (messageTime - lastMessageTime!) / (1000 * 60 * 60);
@@ -850,9 +909,15 @@ class WhatsAppProcessor {
               }
             }
           }
+          if (timeDiffHours >= longSilenceHours) {
+            conversationStartersAfter12h[user] =
+                (conversationStartersAfter12h[user] ?? 0) + 1;
+          }
         } else {
           // Primer mensaje, contar como iniciador
           conversationStarters[user] = (conversationStarters[user] ?? 0) + 1;
+          conversationStartersAfter12h[user] =
+              (conversationStartersAfter12h[user] ?? 0) + 1;
         }
 
         lastMessageTime = messageTime;
@@ -932,6 +997,16 @@ class WhatsAppProcessor {
         timeRangeCounts[currentMessage!.franja] =
             (timeRangeCounts[currentMessage!.franja] ?? 0) + 1;
         hourlyMessageCounts[currentMessage!.hour]++;
+
+        final hLast = currentMessage!.hour;
+        if (hLast >= 20 || hLast < 6) {
+          nightOwlMessageCounts[currentMessage!.user] =
+              (nightOwlMessageCounts[currentMessage!.user] ?? 0) + 1;
+        }
+        if (hLast >= 6 && hLast < 12) {
+          earlyBirdMessageCounts[currentMessage!.user] =
+              (earlyBirdMessageCounts[currentMessage!.user] ?? 0) + 1;
+        }
 
         // Incrementar matriz 7x4 para mensaje final
         try {
@@ -1129,8 +1204,12 @@ class WhatsAppProcessor {
       monthWithMostMessagesCount: monthWithMostMessagesCount,
       longestStreak: longestStreak,
       conversationStarters: conversationStarters,
+      conversationStartersAfter12h: conversationStartersAfter12h,
       averageResponseTimes: averageResponseTimes,
       quickResponseCounts: quickResponseCounts,
+      participantWordTotals: participantWordTotals,
+      nightOwlMessageCounts: nightOwlMessageCounts,
+      earlyBirdMessageCounts: earlyBirdMessageCounts,
       mostConsecutiveMessages: mostConsecutiveMessages,
       mostConsecutiveUser: mostConsecutiveUser,
       mostConsecutiveDate: mostConsecutiveDate,

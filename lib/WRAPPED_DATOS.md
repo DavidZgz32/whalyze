@@ -85,6 +85,10 @@ Todos se actualizan al procesar mensajes que **no** entran en `skipMessage` (mul
 | `monthWithMostMessages`, `monthWithMostMessagesCount` | Mes con mayor `monthlyMessageCounts`. |
 | `longestStreak` | Máxima racha de **días consecutivos** con al menos un mensaje (sobre fechas ordenadas de `dailyMessageCounts`). |
 | `conversationStarters` | Tras **≥4 h** sin mensajes, el siguiente mensaje suma inicio de conversación a ese usuario; el **primer** mensaje del chat también cuenta. |
+| `conversationStartersAfter12h` | Misma lógica que la fila anterior pero con umbral **≥12 h** sin mensajes (pantalla grupal 3, rol «Hola chic@s»). El primer mensaje del chat también suma 1 aquí. |
+| `participantWordTotals` | Por mensaje válido (mismos filtros que el conteo de `participantMessageCounts`), suma de **palabras** tras la tokenización de `processWords` (minúsculas, sin puntuación; URLs sustituidas antes de contar). |
+| `nightOwlMessageCounts` | Por participante: mensajes cuya **hora local del export** cumple «modo noche»: de **20:00** a **06:00** (incluye 20–23 y 0–5; excluye 6 en punto). |
+| `earlyBirdMessageCounts` | Por participante: mensajes entre **06:00** y **12:00** (incluye 6, excluye 12 en punto), hora local del export. |
 | `averageResponseTimes` | Por destinatario: media de minutos entre su mensaje y el mensaje previo de **otro** usuario (misma hebra, sin el gap de 4 h que resetea conversación). Formato `M:SS` o `H:MM:SS`. |
 | `quickResponseCounts` | Respuestas del otro usuario en **< 5 minutos**. |
 | `mostConsecutiveMessages` / `User` / `Date` | Mayor racha de mensajes **seguidos del mismo autor** (contiguos en el txt). |
@@ -142,9 +146,37 @@ Referencias a `widget.data.*` en código:
 | 7 | `wrapped_words_screen.dart` | `topWordByLength` |
 | 8 | `wrapped_final_screen.dart` | (UI de cierre; no depende de `WhatsAppData`) |
 
-**Flujo grupal (pantallas 2–8):** por ahora placeholders de texto; pantalla 1 usa además `groupNameFromExport` (§2).
+**Flujo grupal (pantallas 2–8):** pantalla 1 usa `groupNameFromExport` (§2). Pantalla 2: ranking de mensajes (`participantMessageCounts`). Pantallas 4–8: aún placeholders. Pantalla 3: roles (ver §8b).
 
 ---
+
+## 8b. Pantalla grupal 3 — «Asi se reparten los roles»
+
+**Widgets:** `wrapped_group_third_screen.dart` (UI y animación escalonada cada 2 s). **Cálculo de ganadores:** `buildGroupRoleDisplays()` en `wrapped_group_roles.dart`.
+
+En pantalla solo se muestran **frases cortas** (p. ej. «Más mensajes por la noche»). Las reglas del tipo «no puede ser el MVP» son **solo de cálculo** (exclusión del ganador del MVP en búho y madrugador), no texto de la tarjeta.
+
+Los nombres salen del **orden estable** `data.participants` (en empates, antes en la lista del export gana).
+
+| Rol (emoji) | Ganador(a) | Datos y reglas |
+|-------------|------------|----------------|
+| ⭐ MVP | Mayor `participantMessageCounts`. | Mensajes válidos (no omitidos como multimedia/borrado, etc.). |
+| 🦉 El búho | Mayor conteo nocturno **excluyendo al MVP** (empate → orden de `participants`). | Noche = mensajes con hora local **≥20 o &lt;6** (`nightOwlMessageCounts` al procesar el txt). |
+| 🥷 Asesino silencioso | Menor **media palabras/mensaje** si existen `participantWordTotals` por persona; si esos mapas vienen vacíos (p. ej. favorito muy antiguo), **proxy:** quien menos mensajes tiene entre los que al menos escribieron uno. | Palabras: misma tokenización que al rellenar `participantWordTotals` en `processWords`. |
+| 🌅 Madrugador/a | Mayor conteo matinal **excluyendo al MVP**. | Mañana = hora local **≥6 y &lt;12** (`earlyBirdMessageCounts`). |
+| 🎙️ La voz del grupo | Mayor `participantWordTotals`. | Suma de palabras (mensajes válidos). |
+| 💬 Hola chic@s | Mayor `conversationStartersAfter12h`. | Tras **≥12 h** sin mensajes, el siguiente autor suma 1; el primer mensaje del chat también cuenta. |
+
+**Favoritos sin conteos por persona** (`nightOwlMessageCounts`, `earlyBirdMessageCounts`, etc. vacíos): se **reparte** el total nocturno/matinal que sí viene en `hourlyMessageCounts` entre participantes en proporción a `participantMessageCounts` (enteros con suma exacta al total horario). Para «Hola chic@s», si no hay datos de 12 h se usa como respaldo `conversationStarters` (umbral 4 h del procesador). Con reimportación del txt los mapas por persona son los definitivos.
+
+Si aun así no hay candidato (p. ej. nadie fuera del MVP con mensajes nocturnos repartidos en 0), el nombre se muestra como «—».
+
+---
+</think>
+
+
+<｜tool▁calls▁begin｜><｜tool▁call▁begin｜>
+Shell
 
 ## 9. Persistencia (`WrappedModel`)
 

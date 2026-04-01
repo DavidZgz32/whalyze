@@ -302,6 +302,7 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
         if (rows <= 0) return 2000;
         return 800 + rows * 1000 + 600;
       case 2:
+        return 2000 * 5 + 400 + 200;
       case 3:
       case 4:
       case 5:
@@ -662,6 +663,7 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
           );
         case 2:
           return WrappedGroupThirdScreen(
+            data: data,
             totalScreens: _totalScreens,
             onGroupScreenAnimationsComplete: _onGroupScreenAnimationsComplete,
           );
