@@ -48,6 +48,14 @@ class WhatsAppData {
   final Map<String, int> conversationStarters;
   /// Tras ≥12 h sin mensajes, el siguiente autor suma 1 (p. ej. rol «Hola chic@s» grupal).
   final Map<String, int> conversationStartersAfter12h;
+
+  /// «Último en salir»: autor del mensaje anterior a una pausa de ≥12 h.
+  /// Regla: si hay al menos 12 h hasta el próximo mensaje, ese autor suma +1.
+  final Map<String, int> lastWordsBeforeNextAfter12h;
+
+  /// «Rompehielos»: el autor del mensaje que aparece tras una pausa de ≥2 días (48 h).
+  final Map<String, int> breakIceStartersAfter2d;
+
   final Map<String, String> averageResponseTimes; // MM:SS o HH:MM:SS
   final Map<String, int> quickResponseCounts;
 
@@ -65,6 +73,9 @@ class WhatsAppData {
   
   // Estadísticas de emojis
   final Map<String, List<EmojiStat>> emojiStatsByParticipant;
+
+  /// Total de emojis (iconos) por participante (suma de todos los emojis, no solo top 8).
+  final Map<String, int> emojiTotalByParticipant;
   
   // Estadísticas de palabras
   final Map<String, Map<String, int>> wordStatsByYear; // "3_letters" -> {word: count}
@@ -76,6 +87,9 @@ class WhatsAppData {
 
   // Preguntas
   final int totalQuestions;
+
+  /// Conteo de bloques de interrogantes por participante (según `countQuestions`).
+  final Map<String, int> questionsByParticipant;
   
   // Estadísticas de multimedia
   final Map<String, int> deletedMessagesByParticipant;
@@ -107,6 +121,8 @@ class WhatsAppData {
     required this.longestStreak,
     required this.conversationStarters,
     required this.conversationStartersAfter12h,
+    required this.lastWordsBeforeNextAfter12h,
+    required this.breakIceStartersAfter2d,
     required this.averageResponseTimes,
     required this.quickResponseCounts,
     required this.participantWordTotals,
@@ -116,11 +132,13 @@ class WhatsAppData {
     this.mostConsecutiveUser,
     this.mostConsecutiveDate,
     required this.emojiStatsByParticipant,
+    required this.emojiTotalByParticipant,
     required this.wordStatsByYear,
     required this.totalUniqueWords,
     required this.topWordByLengthByParticipant,
     required this.topWordByLength,
     required this.totalQuestions,
+    required this.questionsByParticipant,
     required this.deletedMessagesByParticipant,
     required this.editedMessagesByParticipant,
     required this.multimediaByParticipant,
@@ -153,6 +171,8 @@ class WhatsAppData {
       'longestStreak': longestStreak,
       'conversationStarters': conversationStarters,
       'conversationStartersAfter12h': conversationStartersAfter12h,
+      'lastWordsBeforeNextAfter12h': lastWordsBeforeNextAfter12h,
+      'breakIceStartersAfter2d': breakIceStartersAfter2d,
       'averageResponseTimes': averageResponseTimes,
       'quickResponseCounts': quickResponseCounts,
       'participantWordTotals': participantWordTotals,
@@ -164,6 +184,7 @@ class WhatsAppData {
       'emojiStatsByParticipant': emojiStatsByParticipant.map(
         (key, value) => MapEntry(key, value.map((e) => e.toJson()).toList()),
       ),
+      'emojiTotalByParticipant': emojiTotalByParticipant,
       'wordStatsByYear': wordStatsByYear,
       'totalUniqueWords': totalUniqueWords,
       'topWordByLengthByParticipant': topWordByLengthByParticipant.map(
@@ -171,6 +192,7 @@ class WhatsAppData {
       ),
       'topWordByLength': topWordByLength.map((k, v) => MapEntry(k.toString(), v)),
       'totalQuestions': totalQuestions,
+      'questionsByParticipant': questionsByParticipant,
       'deletedMessagesByParticipant': deletedMessagesByParticipant,
       'editedMessagesByParticipant': editedMessagesByParticipant,
       'multimediaByParticipant': multimediaByParticipant,
@@ -207,6 +229,10 @@ class WhatsAppData {
       conversationStarters: Map<String, int>.from(json['conversationStarters'] as Map? ?? {}),
       conversationStartersAfter12h:
           WhatsAppData.mapStringIntFromJson(json['conversationStartersAfter12h']),
+      lastWordsBeforeNextAfter12h:
+          WhatsAppData.mapStringIntFromJson(json['lastWordsBeforeNextAfter12h']),
+      breakIceStartersAfter2d:
+          WhatsAppData.mapStringIntFromJson(json['breakIceStartersAfter2d']),
       averageResponseTimes: Map<String, String>.from(json['averageResponseTimes'] as Map? ?? {}),
       quickResponseCounts: Map<String, int>.from(json['quickResponseCounts'] as Map? ?? {}),
       participantWordTotals:
@@ -226,6 +252,8 @@ class WhatsAppData {
               .toList(),
         ),
       ),
+      emojiTotalByParticipant:
+          WhatsAppData.mapStringIntFromJson(json['emojiTotalByParticipant']),
       wordStatsByYear: (json['wordStatsByYear'] as Map? ?? {}).map(
         (key, value) => MapEntry(key as String, Map<String, int>.from(value as Map)),
       ),
@@ -240,6 +268,8 @@ class WhatsAppData {
         (k, v) => MapEntry(int.parse(k as String), v as String),
       ),
       totalQuestions: json['totalQuestions'] as int? ?? 0,
+      questionsByParticipant:
+          WhatsAppData.mapStringIntFromJson(json['questionsByParticipant']),
       deletedMessagesByParticipant: Map<String, int>.from(json['deletedMessagesByParticipant'] as Map? ?? {}),
       editedMessagesByParticipant: Map<String, int>.from(json['editedMessagesByParticipant'] as Map? ?? {}),
       multimediaByParticipant: Map<String, int>.from(json['multimediaByParticipant'] as Map? ?? {}),
@@ -436,16 +466,20 @@ class WhatsAppProcessor {
 
     // Preguntas
     int totalQuestions = 0;
+    final questionsByParticipant = <String, int>{};
 
     // Conversación
     final conversationStarters = <String, int>{};
     final conversationStartersAfter12h = <String, int>{};
+    final lastWordsBeforeNextAfter12h = <String, int>{};
+    final breakIceStartersAfter2d = <String, int>{};
     final responseTimes = <String, List<double>>{};
     final quickResponseCounts = <String, int>{};
     int? lastMessageTime;
     String? lastMessageUser;
     const conversationGapHours = 4;
     const longSilenceHours = 12;
+    const breakIceSilenceHours = 48; // 2+ días
 
     final participantWordTotals = <String, int>{};
     final nightOwlMessageCounts = <String, int>{};
@@ -458,6 +492,7 @@ class WhatsAppProcessor {
 
     // Estadísticas de emojis
     final emojiStatsByParticipant = <String, Map<String, int>>{};
+    final emojiTotalByParticipant = <String, int>{};
 
     // Estadísticas de multimedia
     final deletedMessagesByParticipant = <String, int>{};
@@ -508,13 +543,15 @@ class WhatsAppProcessor {
 
     int countQuestions(String text) {
       // Contar grupos de signos de interrogación consecutivos
-      // Múltiples ? seguidos cuentan como una sola pregunta
-      // Ejemplo: "Que tal??????" = 1 pregunta, "Hola ??" = 1 pregunta, "Hola?" = 1 pregunta
+      // Múltiples ?/¿ seguidos (incluso con espacios entre medias) cuentan
+      // como una sola pregunta.
+      // Ejemplo: "Que tal??????" = 1, "Hola ??" = 1, "? ? ?" = 1, "Hola?" = 1
       int questionCount = 0;
       
-      // Buscar grupos de ? o ¿ consecutivos (pueden tener espacios entre ellos)
-      // Usamos regex para encontrar patrones como: ?+, ¿+, o combinaciones
-      final questionPattern = RegExp(r'[?¿]+');
+      // Detecta secuencias del tipo: ? ? ?, ¿¿ ?, etc.
+      // - No consume caracteres que no sean ?/¿ (ni letras/puntuación).
+      // - Permite espacios entre signos.
+      final questionPattern = RegExp(r'[?¿](?:\s*[?¿])*');
       final matches = questionPattern.allMatches(text);
       
       // Cada grupo de ? consecutivos cuenta como una pregunta
@@ -676,6 +713,10 @@ class WhatsAppProcessor {
         emojiStatsByParticipant[participant] = <String, int>{};
       }
       final participantEmojis = emojiStatsByParticipant[participant]!;
+
+      // Total de iconos en este mensaje (mismo filtrado que para el ranking por emoji).
+      emojiTotalByParticipant[participant] =
+          (emojiTotalByParticipant[participant] ?? 0) + cleanedEmojis.length;
 
       for (final emoji in cleanedEmojis) {
         participantEmojis[emoji] = (participantEmojis[emoji] ?? 0) + 1;
@@ -866,7 +907,10 @@ class WhatsAppProcessor {
             processWords(currentMessage.text, currentMessage.user);
 
             // Contar preguntas
-            totalQuestions += countQuestions(currentMessage.text);
+            final q = countQuestions(currentMessage.text);
+            totalQuestions += q;
+            questionsByParticipant[currentMessage.user] =
+                (questionsByParticipant[currentMessage.user] ?? 0) + q;
           }
         }
 
@@ -912,6 +956,17 @@ class WhatsAppProcessor {
           if (timeDiffHours >= longSilenceHours) {
             conversationStartersAfter12h[user] =
                 (conversationStartersAfter12h[user] ?? 0) + 1;
+            // «Último en salir»: suma al autor del mensaje anterior (el que
+            // cierra la conversación) cuando hay ≥12h hasta el próximo mensaje.
+            if (lastMessageUser != null) {
+              lastWordsBeforeNextAfter12h[lastMessageUser] =
+                  (lastWordsBeforeNextAfter12h[lastMessageUser] ?? 0) + 1;
+            }
+          }
+          if (timeDiffHours >= breakIceSilenceHours) {
+            // «Rompehielos»: el autor del mensaje que aparece tras ≥2 días.
+            breakIceStartersAfter2d[user] =
+                (breakIceStartersAfter2d[user] ?? 0) + 1;
           }
         } else {
           // Primer mensaje, contar como iniciador
@@ -1032,7 +1087,10 @@ class WhatsAppProcessor {
         processWords(currentMessage!.text, currentMessage!.user);
 
         // Contar preguntas en último mensaje
-        totalQuestions += countQuestions(currentMessage!.text);
+        final q = countQuestions(currentMessage!.text);
+        totalQuestions += q;
+        questionsByParticipant[currentMessage!.user] =
+            (questionsByParticipant[currentMessage!.user] ?? 0) + q;
       }
     }
 
@@ -1205,6 +1263,8 @@ class WhatsAppProcessor {
       longestStreak: longestStreak,
       conversationStarters: conversationStarters,
       conversationStartersAfter12h: conversationStartersAfter12h,
+      lastWordsBeforeNextAfter12h: lastWordsBeforeNextAfter12h,
+      breakIceStartersAfter2d: breakIceStartersAfter2d,
       averageResponseTimes: averageResponseTimes,
       quickResponseCounts: quickResponseCounts,
       participantWordTotals: participantWordTotals,
@@ -1214,11 +1274,13 @@ class WhatsAppProcessor {
       mostConsecutiveUser: mostConsecutiveUser,
       mostConsecutiveDate: mostConsecutiveDate,
       emojiStatsByParticipant: emojiStatsByParticipantFinal,
+      emojiTotalByParticipant: emojiTotalByParticipant,
       wordStatsByYear: wordStatsByYearFinal,
       totalUniqueWords: uniqueWords.length,
       topWordByLengthByParticipant: topWordByLengthByParticipant,
       topWordByLength: topWordByLength,
       totalQuestions: totalQuestions,
+      questionsByParticipant: questionsByParticipant,
       deletedMessagesByParticipant: deletedMessagesByParticipant,
       editedMessagesByParticipant: editedMessagesByParticipant,
       multimediaByParticipant: multimediaByParticipant,

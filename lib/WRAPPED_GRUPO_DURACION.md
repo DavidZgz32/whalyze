@@ -34,7 +34,8 @@ Duración del margen post-animación (grupal 0–7):
 |--------|--------|-------------------|
 | 0 | `WrappedGroupFirstScreen` | Fin de la secuencia async de título, bolitas, textos. |
 | 1 | `WrappedGroupSecondScreen` | Tras el último fade (filas escalonadas + pie del carro si existe). |
-| 2 | `WrappedGroupThirdScreen` | Tras el último fade de la última tarjeta de rol (5×2 s de escalón + 400 ms de fade). |
-| 3–7 | `WrappedGroupPlaceholderScreen` | Un frame después del primer layout (sin animaciones). |
+| 2 | `WrappedGroupThirdScreen` | Tras el último fade de la última tarjeta de rol (5×2 s de escalón + 400 ms de fade + 2s extra). |
+| 3 | `WrappedGroupFourthScreen` | Tras el último fade de la última tarjeta de rol (4×2 s de escalón + 400 ms de fade + 2s extra). |
+| 4–7 | `WrappedGroupPlaceholderScreen` | Un frame después del primer layout (sin animaciones). |
 
 Los índices deben coincidir con `_currentScreen` en el slideshow; si no, el aviso se ignora (p. ej. tras saltar de pantalla).

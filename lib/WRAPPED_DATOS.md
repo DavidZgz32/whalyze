@@ -86,6 +86,8 @@ Todos se actualizan al procesar mensajes que **no** entran en `skipMessage` (mul
 | `longestStreak` | Máxima racha de **días consecutivos** con al menos un mensaje (sobre fechas ordenadas de `dailyMessageCounts`). |
 | `conversationStarters` | Tras **≥4 h** sin mensajes, el siguiente mensaje suma inicio de conversación a ese usuario; el **primer** mensaje del chat también cuenta. |
 | `conversationStartersAfter12h` | Misma lógica que la fila anterior pero con umbral **≥12 h** sin mensajes (pantalla grupal 3, rol «Hola chic@s»). El primer mensaje del chat también suma 1 aquí. |
+| `lastWordsBeforeNextAfter12h` | «Último en salir»: cuando entre **dos mensajes válidos** hay **≥12 h**, el **autor del mensaje anterior** suma +1. |
+| `breakIceStartersAfter2d` | «Rompehielos»: cuando entre **dos mensajes válidos** hay **≥48 h**, el **autor del mensaje actual** suma +1. |
 | `participantWordTotals` | Por mensaje válido (mismos filtros que el conteo de `participantMessageCounts`), suma de **palabras** tras la tokenización de `processWords` (minúsculas, sin puntuación; URLs sustituidas antes de contar). |
 | `nightOwlMessageCounts` | Por participante: mensajes cuya **hora local del export** cumple «modo noche»: de **20:00** a **06:00** (incluye 20–23 y 0–5; excluye 6 en punto). |
 | `earlyBirdMessageCounts` | Por participante: mensajes entre **06:00** y **12:00** (incluye 6, excluye 12 en punto), hora local del export. |
@@ -93,8 +95,10 @@ Todos se actualizan al procesar mensajes que **no** entran en `skipMessage` (mul
 | `quickResponseCounts` | Respuestas del otro usuario en **< 5 minutos**. |
 | `mostConsecutiveMessages` / `User` / `Date` | Mayor racha de mensajes **seguidos del mismo autor** (contiguos en el txt). |
 | `emojiStatsByParticipant` | Conteo de emojis por usuario (lógica de normalización en el procesador). |
+| `emojiTotalByParticipant` | Total de emojis por usuario (suma de todos los emojis, no solo top 8). |
 | `wordStatsByYear`, `totalUniqueWords`, `topWordByLengthByParticipant`, `topWordByLength` | Tokenización de palabras, filtros de longitud (p. ej. pantalla de palabras usa longitudes 4–14). |
 | `totalQuestions` | Conteo de grupos `?` / `¿` en texto (`countQuestions`). |
+| `questionsByParticipant` | Conteo de bloques `?`/`¿` por usuario (según `countQuestions`, p. ej. `? ? ?` cuenta como 1). |
 | `deletedMessagesByParticipant`, `editedMessagesByParticipant` | Patrones tipo “Eliminaste…”, “Se eliminó…”, “This message was deleted”, `<Se editó este mensaje.>`, etc. |
 | `multimediaByParticipant` | `<Multimedia omitido>` / `<Media omitted>`. |
 | `locationsByParticipant` | Texto con ubicación y enlaces maps. |
@@ -146,30 +150,50 @@ Referencias a `widget.data.*` en código:
 | 7 | `wrapped_words_screen.dart` | `topWordByLength` |
 | 8 | `wrapped_final_screen.dart` | (UI de cierre; no depende de `WhatsAppData`) |
 
-**Flujo grupal (pantallas 2–8):** pantalla 1 usa `groupNameFromExport` (§2). Pantalla 2: ranking de mensajes (`participantMessageCounts`). Pantallas 4–8: aún placeholders. Pantalla 3: roles (ver §8b).
+**Flujo grupal (pantallas 2–8):** pantalla 1 usa `groupNameFromExport` (§2). Pantalla 2: ranking de mensajes (`participantMessageCounts`). Pantalla 3: roles (ver §8b). Pantalla 4: roles nuevos (ver §8c). Pantallas 5–8: aún placeholders.
 
 ---
 
-## 8b. Pantalla grupal 3 — «Asi se reparten los roles»
+## 8b. Pantalla grupal 3 — «Así se reparten los roles»
 
 **Widgets:** `wrapped_group_third_screen.dart` (UI y animación escalonada cada 2 s). **Cálculo de ganadores:** `buildGroupRoleDisplays()` en `wrapped_group_roles.dart`.
 
-En pantalla solo se muestran **frases cortas** (p. ej. «Más mensajes por la noche»). Las reglas del tipo «no puede ser el MVP» son **solo de cálculo** (exclusión del ganador del MVP en búho y madrugador), no texto de la tarjeta.
+En pantalla solo se muestran **frases cortas** (p. ej. «Más mensajes por la noche»). Las reglas del tipo «no puede ser el GOAT» son **solo de cálculo** (exclusión del ganador del GOAT en búho y madrugador), no texto de la tarjeta.
 
 Los nombres salen del **orden estable** `data.participants` (en empates, antes en la lista del export gana).
 
 | Rol (emoji) | Ganador(a) | Datos y reglas |
 |-------------|------------|----------------|
-| ⭐ MVP | Mayor `participantMessageCounts`. | Mensajes válidos (no omitidos como multimedia/borrado, etc.). |
+| ⭐ GOAT | Mayor `participantMessageCounts`. | Mensajes válidos (no omitidos como multimedia/borrado, etc.). |
 | 🦉 El búho | Mayor conteo nocturno **excluyendo al MVP** (empate → orden de `participants`). | Noche = mensajes con hora local **≥20 o &lt;6** (`nightOwlMessageCounts` al procesar el txt). |
 | 🥷 Asesino silencioso | Menor **media palabras/mensaje** si existen `participantWordTotals` por persona; si esos mapas vienen vacíos (p. ej. favorito muy antiguo), **proxy:** quien menos mensajes tiene entre los que al menos escribieron uno. | Palabras: misma tokenización que al rellenar `participantWordTotals` en `processWords`. |
-| 🌅 Madrugador/a | Mayor conteo matinal **excluyendo al MVP**. | Mañana = hora local **≥6 y &lt;12** (`earlyBirdMessageCounts`). |
+| 🌅 Madrugón asegurado | Mayor conteo matinal **excluyendo al GOAT**. | Mañana = hora local **≥6 y &lt;12** (`earlyBirdMessageCounts`). |
 | 🎙️ La voz del grupo | Mayor `participantWordTotals`. | Suma de palabras (mensajes válidos). |
 | 💬 Hola chic@s | Mayor `conversationStartersAfter12h`. | Tras **≥12 h** sin mensajes, el siguiente autor suma 1; el primer mensaje del chat también cuenta. |
 
 **Favoritos sin conteos por persona** (`nightOwlMessageCounts`, `earlyBirdMessageCounts`, etc. vacíos): se **reparte** el total nocturno/matinal que sí viene en `hourlyMessageCounts` entre participantes en proporción a `participantMessageCounts` (enteros con suma exacta al total horario). Para «Hola chic@s», si no hay datos de 12 h se usa como respaldo `conversationStarters` (umbral 4 h del procesador). Con reimportación del txt los mapas por persona son los definitivos.
 
 Si aun así no hay candidato (p. ej. nadie fuera del MVP con mensajes nocturnos repartidos en 0), el nombre se muestra como «—».
+
+---
+
+## 8c. Pantalla grupal 4 — Roles nuevos
+
+**Widgets:** `wrapped_group_fourth_screen.dart` (UI y animación escalonada cada 2 s). **Cálculo de ganadores:** `buildGroupRoleDisplaysFourth()` en `wrapped_group_roles.dart`.
+
+En pantalla solo se muestran **frases cortas** (la UI usa `GroupRoleDisplay.description`).
+
+Los nombres salen del **orden estable** `data.participants` (en empates, antes en la lista del export gana).
+
+| Rol (emoji) | Ganador(a) | Datos y reglas |
+|-------------|------------|----------------|
+| ⏳ Último en salir | Mayor `lastWordsBeforeNextAfter12h`. | Entre dos mensajes válidos hay **≥12 h**: el **autor del mensaje anterior** suma +1. |
+| 🧊 Rompehielos | Mayor `breakIceStartersAfter2d`. | Entre dos mensajes válidos hay **≥48 h**: el **autor del mensaje actual** suma +1. |
+| 🕵️ Detective | Mayor `questionsByParticipant`. | Cada bloque de signos `?`/`¿` contiguo (aunque haya espacios entre ellos) cuenta como **1**. |
+| 🙈 ¿Qué escondes? | Mayor `deletedMessagesByParticipant`. | Mensajes borrados detectados por el procesador (ej. «Se eliminó este mensaje»). |
+| ✨ Emoji master | Mayor `emojiTotalByParticipant`. | Total de iconos (suma de emojis de todo el export). |
+
+Si no hay candidato (conteos = 0), el nombre se muestra como «—».
 
 ---
 </think>

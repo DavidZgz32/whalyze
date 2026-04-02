@@ -118,7 +118,7 @@ Map<String, int> _effectiveLongSilenceStarters(WhatsAppData data) {
   return {};
 }
 
-/// Calcula los seis roles. Reglas de medición: `WRAPPED_DATOS.md` §8b.
+/// Calcula los seis roles (pantalla grupal 3). Reglas de medición: `WRAPPED_DATOS.md` §8b.
 /// La UI solo muestra [GroupRoleDisplay.description] (una frase corta).
 List<GroupRoleDisplay> buildGroupRoleDisplays(WhatsAppData data) {
   final order = data.participants;
@@ -198,7 +198,7 @@ List<GroupRoleDisplay> buildGroupRoleDisplays(WhatsAppData data) {
   return [
     GroupRoleDisplay(
       emoji: '⭐',
-      title: 'MVP',
+      title: 'GOAT',
       description: 'Quién más mensajes ha enviado.',
       winnerName: mvp,
     ),
@@ -216,7 +216,7 @@ List<GroupRoleDisplay> buildGroupRoleDisplays(WhatsAppData data) {
     ),
     GroupRoleDisplay(
       emoji: '🌅',
-      title: 'Madrugador/a del grupo',
+      title: 'Madrugón asegurado',
       description: 'Más mensajes por la mañana.',
       winnerName: maxKey(morning, exclude: mvpExclude),
     ),
@@ -231,6 +231,59 @@ List<GroupRoleDisplay> buildGroupRoleDisplays(WhatsAppData data) {
       title: 'Hola chic@s',
       description: 'Quién más rompe el silencio del grupo.',
       winnerName: maxKey(longSilence),
+    ),
+  ];
+}
+
+/// Calcula los 5 roles nuevos (pantalla grupal 4).
+List<GroupRoleDisplay> buildGroupRoleDisplaysFourth(WhatsAppData data) {
+  final order = data.participants;
+
+  String? maxKey(Map<String, int> counts) {
+    var bestVal = 0;
+    String? best;
+    for (final p in order) {
+      final v = counts[p] ?? 0;
+      if (v > bestVal) {
+        bestVal = v;
+        best = p;
+      }
+    }
+    return bestVal > 0 ? best : null;
+  }
+
+  return [
+    GroupRoleDisplay(
+      emoji: '⏳',
+      title: 'Último en salir',
+      description:
+          'La persona que suele tener la última palabra en las conversaciones',
+      winnerName: maxKey(data.lastWordsBeforeNextAfter12h),
+    ),
+    GroupRoleDisplay(
+      emoji: '🧊',
+      title: 'Rompehielos',
+      description:
+          'Cuando el grupo estuvo 2 o más días sin hablar, puso un mensaje',
+      winnerName: maxKey(data.breakIceStartersAfter2d),
+    ),
+    GroupRoleDisplay(
+      emoji: '🕵️',
+      title: 'Detective',
+      description: 'La persona que hace más preguntas',
+      winnerName: maxKey(data.questionsByParticipant),
+    ),
+    GroupRoleDisplay(
+      emoji: '🙈',
+      title: '¿Qué escondes?',
+      description: 'La persona que más mensajes ha borrado',
+      winnerName: maxKey(data.deletedMessagesByParticipant),
+    ),
+    GroupRoleDisplay(
+      emoji: '✨',
+      title: 'Emoji master',
+      description: 'Quién ha puesto más iconos',
+      winnerName: maxKey(data.emojiTotalByParticipant),
     ),
   ];
 }

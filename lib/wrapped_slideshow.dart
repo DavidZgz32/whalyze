@@ -302,8 +302,12 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
         if (rows <= 0) return 2000;
         return 800 + rows * 1000 + 600;
       case 2:
-        return 2000 * 5 + 400 + 200;
+        // Pantalla grupal 3: 6 roles → último fade a 2000*5 + 400.
+        // El widget además avisa 2s extra antes del hold de 1s del slideshow.
+        return 2000 * 5 + 400 + 2000;
       case 3:
+        // Pantalla grupal 4: 5 roles → último fade a 2000*4 + 400.
+        return 2000 * 4 + 400 + 2000;
       case 4:
       case 5:
       case 6:
@@ -669,6 +673,7 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
           );
         case 3:
           return WrappedGroupFourthScreen(
+            data: data,
             totalScreens: _totalScreens,
             onGroupScreenAnimationsComplete: _onGroupScreenAnimationsComplete,
           );
