@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_archive/flutter_archive.dart';
 import 'package:flutter/services.dart';
@@ -13,9 +15,28 @@ import 'privacy_screen.dart';
 import 'onboarding_preferences.dart';
 import 'onboarding_screen.dart';
 import 'pip_demo_screen.dart';
+import 'paywall_dialog.dart';
+import 'services/firestore_user_service.dart';
+
+Future<void> _initFirebaseAndUser() async {
+  try {
+    await Firebase.initializeApp();
+    final auth = FirebaseAuth.instance;
+    if (auth.currentUser == null) {
+      await auth.signInAnonymously();
+    }
+    await FirestoreUserService.instance.bootstrap();
+    debugPrint(
+      'Firebase uid: ${FirebaseAuth.instance.currentUser?.uid ?? "(none)"}',
+    );
+  } catch (e, stackTrace) {
+    debugPrint('Firebase / Firestore bootstrap: $e\n$stackTrace');
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await _initFirebaseAndUser();
   if (Platform.isAndroid) {
     // Edge-to-edge explícito + estilo sin colores de barra (evita setStatusBarColor /
     // setNavigationBarColor deprecados en Android 15+ en el embedding de Flutter).
@@ -439,6 +460,8 @@ class _HomeScreenState extends State<HomeScreen> {
         try {
           final content = await _readChatContentFromFile(filePath);
           if (!mounted) return;
+          if (!await guardOpenWrapped(context)) return;
+          if (!mounted) return;
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => WrappedScreen(
@@ -477,7 +500,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _openDemo() {
+  Future<void> _openDemo() async {
+    if (!await guardOpenWrapped(context)) return;
+    if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const WrappedScreen(
@@ -532,16 +557,17 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       final content = await _readChatContentFromFile(pathToRead);
 
-      if (mounted) {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => WrappedScreen(
-              filePath: pathToRead,
-              fileContent: content,
-            ),
+      if (!mounted) return;
+      if (!await guardOpenWrapped(context)) return;
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => WrappedScreen(
+            filePath: pathToRead,
+            fileContent: content,
           ),
-        );
-      }
+        ),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

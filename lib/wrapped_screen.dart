@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'paywall_dialog.dart';
 import 'whatsapp_processor.dart';
 import 'services/wrapped_storage.dart';
+import 'services/firestore_user_service.dart';
 import 'models/wrapped_model.dart';
 import 'wrapped_slideshow.dart';
 
@@ -22,11 +24,48 @@ class WrappedScreen extends StatefulWidget {
 class _WrappedScreenState extends State<WrappedScreen> {
   WhatsAppData? _data;
   bool _hasBeenSaved = false;
+  bool _consumingSlot = true;
+  String? _slotError;
 
   @override
   void initState() {
     super.initState();
     _data = WhatsAppProcessor.processFile(widget.fileContent);
+    _consumeWrappedSlot();
+  }
+
+  Future<void> _consumeWrappedSlot() async {
+    if (_data == null) {
+      if (mounted) setState(() => _consumingSlot = false);
+      return;
+    }
+    try {
+      await FirestoreUserService.instance.consumeWrappedSlot();
+    } on PaywallRequiredException {
+      if (mounted) {
+        await showPaywallDialog(context);
+        if (mounted) Navigator.of(context).pop();
+      }
+      return;
+    } on DeviceSecurityException {
+      if (mounted) {
+        await showDeviceSecurityDialog(context);
+        if (mounted) Navigator.of(context).pop();
+      }
+      return;
+    } catch (e, st) {
+      debugPrint('consumeWrappedSlot: $e\n$st');
+      if (mounted) {
+        setState(() {
+          _slotError = e.toString();
+          _consumingSlot = false;
+        });
+      }
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() => _consumingSlot = false);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(seconds: 1), () {
@@ -42,7 +81,11 @@ class _WrappedScreenState extends State<WrappedScreen> {
     if (participants.isEmpty) return 'WHALYZE ${DateTime.now().year}';
     const maxLetters = 8;
     final parts = participants
-        .map((name) => name.trim().isEmpty ? '' : name.trim().length <= maxLetters ? name.trim() : name.trim().substring(0, maxLetters))
+        .map((name) => name.trim().isEmpty
+            ? ''
+            : name.trim().length <= maxLetters
+                ? name.trim()
+                : name.trim().substring(0, maxLetters))
         .where((s) => s.isNotEmpty);
     return parts.isEmpty ? 'WHALYZE ${DateTime.now().year}' : parts.join(' - ');
   }
@@ -72,8 +115,7 @@ class _WrappedScreenState extends State<WrappedScreen> {
       );
       await WrappedStorage.saveWrapped(wrapped);
     } catch (e, stackTrace) {
-      print('Error al guardar wrapped: $e');
-      print('Stack trace: $stackTrace');
+      debugPrint('Error al guardar wrapped: $e\n$stackTrace');
       _hasBeenSaved = false;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -92,7 +134,7 @@ class _WrappedScreenState extends State<WrappedScreen> {
 
   @override
   void dispose() {
-    if (!_hasBeenSaved && _data != null) {
+    if (!_hasBeenSaved && _data != null && !_consumingSlot && _slotError == null) {
       _saveWrapped();
     }
     super.dispose();
@@ -103,6 +145,56 @@ class _WrappedScreenState extends State<WrappedScreen> {
     if (_data == null) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_consumingSlot) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 24),
+              Text(
+                'Preparando tu wrapped…',
+                style: GoogleFonts.poppins(fontSize: 16),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_slotError != null) {
+      return Scaffold(
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'No se pudo confirmar tu cuenta',
+                  style: GoogleFonts.poppins(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _slotError!,
+                  style: GoogleFonts.poppins(fontSize: 14),
+                ),
+                const Spacer(),
+                FilledButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('Volver', style: GoogleFonts.poppins()),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
 

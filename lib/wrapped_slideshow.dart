@@ -866,20 +866,32 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
     final stripTop = _navStripTop(context);
     final stripW = _navStripWidth(context);
     final bottomPad = MediaQuery.of(context).padding.bottom + 36;
+    final bool useGroup2Bg = _isGroupChat && _currentScreen == 1;
 
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       onLongPressStart: (_) => _pauseAnimation(),
       onLongPressEnd: (_) {}, // Mantener pulsado = pausa y queda pausado (como el botón)
       child: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
+          image: useGroup2Bg
+              ? const DecorationImage(
+                  image: AssetImage('assets/images/fondo-grupal-2.png'),
+                  fit: BoxFit.cover,
+                )
+              : null,
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF00C980),
-              Color(0xFF00A6B6),
-            ],
+            colors: useGroup2Bg
+                ? [
+                    const Color(0xFF00C980).withValues(alpha: 0.55),
+                    const Color(0xFF00A6B6).withValues(alpha: 0.55),
+                  ]
+                : const [
+                    Color(0xFF00C980),
+                    Color(0xFF00A6B6),
+                  ],
           ),
         ),
         child: Stack(
@@ -925,7 +937,7 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
                     'Creado con Whalyze',
                     style: GoogleFonts.poppins(
                       fontSize: 14,
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.white.withValues(alpha: 0.8),
                     ),
                   ),
                 ),

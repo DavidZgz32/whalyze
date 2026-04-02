@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "911354510889",
+    "project_id": "whalyze-171bc",
+    "storage_bucket": "whalyze-171bc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:911354510889:android:498b62607f5399f264a638",
+        "android_client_info": {
+          "package_name": "com.whalyze.wra5"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyATAucGVnWmh6JnxAzhx0tVe78K8er9t8U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

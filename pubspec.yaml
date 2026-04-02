@@ -20,6 +20,10 @@ dependencies:
   flutter_archive: ^6.0.4
   url_launcher: ^6.2.0
   video_player: ^2.9.5
+  firebase_core: ^4.6.0
+  firebase_auth: ^6.3.0
+  cloud_firestore: ^6.2.0
+  uuid: ^4.5.3
 
 dev_dependencies:
   flutter_test:
