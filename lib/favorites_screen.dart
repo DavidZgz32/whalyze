@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'services/wrapped_storage.dart';
+import 'services/firestore_user_service.dart';
 import 'models/wrapped_model.dart';
 import 'wrapped_view_screen.dart';
 
@@ -13,11 +14,14 @@ class FavoritesScreen extends StatefulWidget {
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
   List<WrappedModel> _wrappeds = [];
+  UserWrappedQuotaSnapshot? _quota;
+  bool _quotaLoading = true;
 
   @override
   void initState() {
     super.initState();
     _loadWrappeds();
+    _loadQuota();
   }
 
   @override
@@ -26,11 +30,36 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     _loadWrappeds();
   }
 
+  Future<void> _loadQuota() async {
+    final snap = await FirestoreUserService.instance.fetchQuotaSnapshot();
+    if (!mounted) return;
+    setState(() {
+      _quota = snap;
+      _quotaLoading = false;
+    });
+  }
+
   void _loadWrappeds() {
     final loadedWrappeds = WrappedStorage.getAllWrappeds();
     setState(() {
       _wrappeds = loadedWrappeds;
     });
+  }
+
+  String _remainingQuotaSubtitle({required bool isGroup}) {
+    if (_quotaLoading) return 'Cargando saldo de wrappeds…';
+    final q = _quota;
+    if (q == null) {
+      return 'No se pudo cargar tu saldo de wrappeds.';
+    }
+    if (q.hasPaid) {
+      return 'Puedes crear wrappeds sin límite.';
+    }
+    final n = q.remainingForKind(isGroup: isGroup);
+    if (isGroup) {
+      return 'Te quedan $n wrappeds grupales por crear.';
+    }
+    return 'Te quedan $n wrappeds individuales por crear.';
   }
 
   /// Grupo WhatsApp: más de 2 participantes. 1:1 queda en Individual.
@@ -69,7 +98,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     );
   }
 
-  Widget _buildEmptyState(String message) {
+  Widget _buildEmptyState(String message, {required bool isGroup}) {
+    final subtitle = _remainingQuotaSubtitle(isGroup: isGroup);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -91,14 +121,33 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               ),
             ),
           ),
+          if (subtitle.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  height: 1.35,
+                  color: Colors.grey[500],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildWrappedList(List<WrappedModel> items, String emptyMessage) {
+  Widget _buildWrappedList(
+    List<WrappedModel> items,
+    String emptyMessage, {
+    required bool isGroupTab,
+  }) {
     if (items.isEmpty) {
-      return _buildEmptyState(emptyMessage);
+      return _buildEmptyState(emptyMessage, isGroup: isGroupTab);
     }
     return ListView.builder(
       padding: const EdgeInsets.all(16.0),
@@ -298,10 +347,12 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             _buildWrappedList(
               _individualWrappeds,
               '¡Todavía no has creado ningún wrapped! Importa un chat y analiza vuestra actividad.',
+              isGroupTab: false,
             ),
             _buildWrappedList(
               _groupWrappeds,
               '¡Todavía no has creado ningún wrapped grupal! Importa un chat grupal y analiza vuestra actividad en grupo.',
+              isGroupTab: true,
             ),
           ],
         ),

@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'wrapped_screen.dart';
 import 'services/wrapped_storage.dart';
 import 'favorites_screen.dart';
@@ -16,7 +17,9 @@ import 'onboarding_preferences.dart';
 import 'onboarding_screen.dart';
 import 'pip_demo_screen.dart';
 import 'paywall_dialog.dart';
+import 'whatsapp_processor.dart';
 import 'services/firestore_user_service.dart';
+import 'services/iap_wrapped_pack_service.dart';
 
 Future<void> _initFirebaseAndUser() async {
   try {
@@ -37,6 +40,8 @@ Future<void> _initFirebaseAndUser() async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await _initFirebaseAndUser();
+  await MobileAds.instance.initialize();
+  IapWrappedPackService.instance.startListening();
   if (Platform.isAndroid) {
     // Edge-to-edge explícito + estilo sin colores de barra (evita setStatusBarColor /
     // setNavigationBarColor deprecados en Android 15+ en el embedding de Flutter).
@@ -460,7 +465,9 @@ class _HomeScreenState extends State<HomeScreen> {
         try {
           final content = await _readChatContentFromFile(filePath);
           if (!mounted) return;
-          if (!await guardOpenWrapped(context)) return;
+          final isGroup =
+              WhatsAppProcessor.processFile(content).participants.length > 2;
+          if (!await guardOpenWrapped(context, isGroup: isGroup)) return;
           if (!mounted) return;
           Navigator.of(context).push(
             MaterialPageRoute(
@@ -501,7 +508,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openDemo() async {
-    if (!await guardOpenWrapped(context)) return;
+    final isGroup =
+        WhatsAppProcessor.processFile(_demoChatContent).participants.length > 2;
+    if (!await guardOpenWrapped(context, isGroup: isGroup)) return;
     if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -558,7 +567,9 @@ class _HomeScreenState extends State<HomeScreen> {
       final content = await _readChatContentFromFile(pathToRead);
 
       if (!mounted) return;
-      if (!await guardOpenWrapped(context)) return;
+      final isGroup =
+          WhatsAppProcessor.processFile(content).participants.length > 2;
+      if (!await guardOpenWrapped(context, isGroup: isGroup)) return;
       if (!mounted) return;
       Navigator.of(context).push(
         MaterialPageRoute(
