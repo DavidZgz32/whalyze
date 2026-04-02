@@ -309,6 +309,8 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
         // Pantalla grupal 4: 5 roles → último fade a 2000*4 + 400.
         return 2000 * 4 + 400 + 2000;
       case 4:
+        // Pantalla grupal 5: día/mes + ladder de emojis (animación propia ~1.2s).
+        return 1600;
       case 5:
       case 6:
       case 7:
@@ -679,6 +681,7 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
           );
         case 4:
           return WrappedGroupFifthScreen(
+            data: data,
             totalScreens: _totalScreens,
             onGroupScreenAnimationsComplete: _onGroupScreenAnimationsComplete,
           );
