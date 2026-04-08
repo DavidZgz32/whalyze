@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
 
+import 'monetization_config.dart';
 import 'services/firestore_user_service.dart';
 import 'services/iap_wrapped_pack_service.dart';
 import 'services/rewarded_ad_helper.dart';
@@ -22,7 +24,47 @@ class _PaywallDialogBody extends StatefulWidget {
 
 class _PaywallDialogBodyState extends State<_PaywallDialogBody> {
   bool _adBusy = false;
-  bool _purchaseBusy = false;
+  bool _restoreBusy = false;
+  String? _purchasingProductId;
+  Map<String, ProductDetails> _products = {};
+  bool _productsLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
+
+  /// Precio localizado de Play; si el string viene vacío, usa [ProductDetails.rawPrice].
+  String _priceLabel(ProductDetails? d, {required bool loading}) {
+    if (loading) return '…';
+    if (d == null) return '—';
+    final p = d.price.trim();
+    if (p.isNotEmpty) return p;
+    if (d.rawPrice > 0 && d.currencyCode.isNotEmpty) {
+      return '${d.rawPrice.toStringAsFixed(2)} ${d.currencyCode}';
+    }
+    return '—';
+  }
+
+  Future<void> _loadProducts() async {
+    setState(() => _productsLoading = true);
+    for (var attempt = 0; attempt < 4; attempt++) {
+      if (attempt > 0) {
+        await Future<void>.delayed(Duration(milliseconds: 350 * attempt));
+      }
+      final map = await IapWrappedPackService.instance.fetchWrappedProducts();
+      if (!mounted) return;
+      setState(() {
+        _products = Map<String, ProductDetails>.from(map);
+        if (attempt == 0) _productsLoading = false;
+      });
+      final allFound = MonetizationConfig.wrappedProductIds.every(
+        (id) => map[id] != null,
+      );
+      if (allFound) break;
+    }
+  }
 
   Future<void> _onWatchAd() async {
     if (_adBusy) return;
@@ -69,18 +111,17 @@ class _PaywallDialogBodyState extends State<_PaywallDialogBody> {
     if (mounted) setState(() => _adBusy = false);
   }
 
-  Future<void> _onBuyPack() async {
-    if (_purchaseBusy) return;
-    setState(() => _purchaseBusy = true);
+  Future<void> _onBuyPack(String productId, int slots) async {
+    if (_purchasingProductId != null) return;
+    setState(() => _purchasingProductId = productId);
     try {
-      final ok =
-          await IapWrappedPackService.instance.buySixPack();
+      final ok = await IapWrappedPackService.instance.buyWrappedPack(productId);
       if (!mounted) return;
       if (!ok) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'No se pudo iniciar la compra. Comprueba que el producto existe en Play Console y está activo.',
+              'No se pudo iniciar la compra. Comprueba que "$productId" existe en Play Console y está activo.',
               style: GoogleFonts.poppins(),
             ),
           ),
@@ -89,15 +130,88 @@ class _PaywallDialogBodyState extends State<_PaywallDialogBody> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Completa el pago en Google Play. Se añadirán 6 wrappeds al confirmar.',
+              'Completa el pago en Google Play. Se añadirán $slots wrappeds al confirmar.',
               style: GoogleFonts.poppins(),
             ),
           ),
         );
       }
     } finally {
-      if (mounted) setState(() => _purchaseBusy = false);
+      if (mounted) setState(() => _purchasingProductId = null);
     }
+  }
+
+  Future<void> _onRestore() async {
+    if (_restoreBusy) return;
+    setState(() => _restoreBusy = true);
+    try {
+      await IapWrappedPackService.instance.restorePurchases();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Buscando compras en Google Play… Si hay alguna pendiente, se aplicará al instante.',
+            style: GoogleFonts.poppins(),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _restoreBusy = false);
+    }
+  }
+
+  Widget _packCard({
+    required String productId,
+    required int slots,
+    required TextStyle bodyStyle,
+  }) {
+    final details = _products[productId];
+    final priceText = _priceLabel(details, loading: _productsLoading);
+    final busy = _purchasingProductId == productId;
+
+    return Material(
+      color: const Color(0xFFF3F6FF),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: (_purchasingProductId != null || _productsLoading)
+            ? null
+            : () => _onBuyPack(productId, slots),
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFD0DAF5)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                priceText,
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1E3A5F),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'por $slots wrappeds',
+                style: bodyStyle,
+              ),
+              if (busy) ...[
+                const SizedBox(height: 10),
+                const SizedBox(
+                  height: 22,
+                  width: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -120,112 +234,97 @@ class _PaywallDialogBodyState extends State<_PaywallDialogBody> {
       contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
       titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       title: Text(
-        'Has creado un wrapped gratuito, ahora puedes pagar o ver un anuncio para crear más',
+        '¡Has alcanzado tu límite de wrappeds! Puedes ver un anuncio o comprar más para seguir.',
         style: titleStyle,
       ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Material(
-                  color: const Color(0xFFF3F6FF),
-                  borderRadius: BorderRadius.circular(14),
-                  child: InkWell(
-                    onTap: _purchaseBusy ? null : _onBuyPack,
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _packCard(
+                    productId: MonetizationConfig.wrappedProductId5,
+                    slots: 5,
+                    bodyStyle: bodyStyle,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _packCard(
+                    productId: MonetizationConfig.wrappedProductId10,
+                    slots: 10,
+                    bodyStyle: bodyStyle,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Material(
+              color: const Color(0xFFF7F7F7),
+              borderRadius: BorderRadius.circular(14),
+              child: InkWell(
+                onTap: _adBusy ? null : _onWatchAd,
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(14),
-                    child: Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFD0DAF5)),
+                    border: Border.all(color: Colors.grey.shade400),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Ver anuncio',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black87,
+                        ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Pagar 4,99 €',
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF1E3A5F),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'por 6 wrappeds',
-                            style: bodyStyle,
-                          ),
-                          if (_purchaseBusy) ...[
-                            const SizedBox(height: 10),
-                            const SizedBox(
-                              height: 22,
-                              width: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          ],
-                        ],
+                      const SizedBox(height: 6),
+                      Text(
+                        '+1 wrapped gratis',
+                        style: bodyStyle.copyWith(
+                          color: const Color(0xFF2E7D32),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
+                      if (_adBusy) ...[
+                        const SizedBox(height: 10),
+                        const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Material(
-                  color: const Color(0xFFF7F7F7),
-                  borderRadius: BorderRadius.circular(14),
-                  child: InkWell(
-                    onTap: _adBusy ? null : _onWatchAd,
-                    borderRadius: BorderRadius.circular(14),
-                    child: Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.grey.shade400),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Ver anuncio',
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            '+1 wrapped gratis',
-                            style: bodyStyle.copyWith(
-                              color: const Color(0xFF2E7D32),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          if (_adBusy) ...[
-                            const SizedBox(height: 10),
-                            const SizedBox(
-                              height: 22,
-                              width: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
       actions: [
+        TextButton(
+          onPressed: _restoreBusy ? null : _onRestore,
+          child: _restoreBusy
+              ? SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                )
+              : Text('Restaurar compras', style: GoogleFonts.poppins()),
+        ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: Text('Cerrar', style: GoogleFonts.poppins()),

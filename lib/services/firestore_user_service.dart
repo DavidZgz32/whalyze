@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
+import '../monetization_config.dart';
+
 const _kPrefsDeviceId = 'firebase_user_device_id';
 const _kPrefsIndividualCount = 'user_wrapped_individual_cache';
 const _kPrefsGroupCount = 'user_wrapped_group_cache';
@@ -355,9 +357,12 @@ class FirestoreUserService {
     await _cacheFromDocData(fresh.data());
   }
 
-  /// Créditos por pack de pago (consumible).
-  Future<void> grantPurchasedWrappedSlots(int slots) async {
-    if (slots <= 0) return;
+  /// Tras compra IAP completada: incrementa [remainingWrappeds] (+5 / +10) y [hasPaid] = true.
+  /// Usa transacción para lectura-modificación atómica.
+  Future<void> applySuccessfulPurchase(String productId) async {
+    final add = MonetizationConfig.wrappedSlotsForProductId(productId);
+    if (add == null || add <= 0) return;
+
     if (_deviceIdMismatch) throw DeviceSecurityException();
 
     final user = FirebaseAuth.instance.currentUser;
@@ -366,13 +371,32 @@ class FirestoreUserService {
     final ref = _userRef(user.uid);
     if (ref == null) throw FirestoreUserNotReadyException();
 
+    final prefs = await SharedPreferences.getInstance();
+    var boundDeviceId = prefs.getString(_kPrefsDeviceId);
+    if (boundDeviceId == null || boundDeviceId.isEmpty) {
+      boundDeviceId = _uuid.v4();
+      await prefs.setString(_kPrefsDeviceId, boundDeviceId);
+    }
+
     await _db.runTransaction((tx) async {
       final snap = await tx.get(ref);
-      if (!snap.exists) return;
+      if (!snap.exists) {
+        tx.set(ref, {
+          _kFieldIndividual: 0,
+          _kFieldGroup: 0,
+          _kFieldRemaining: add,
+          'hasPaid': true,
+          'deviceId': boundDeviceId,
+        });
+        return;
+      }
+
       final d = snap.data() ?? {};
-      if (_legacyHasPaid(d)) return;
       final rem = _remainingWrappeds(d);
-      tx.update(ref, {_kFieldRemaining: rem + slots});
+      tx.update(ref, {
+        _kFieldRemaining: rem + add,
+        'hasPaid': true,
+      });
     });
 
     final fresh = await ref.get();

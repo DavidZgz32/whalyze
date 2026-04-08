@@ -1,5 +1,7 @@
-/// IDs de AdMob (Whalyze) y SKU del pack en Google Play.
-/// Crea en Play Console un producto **consumible** con el mismo id que [wrappedSixPackProductId].
+/// IDs de AdMob (Whalyze) y SKUs de compras in-app en Google Play.
+///
+/// Cada id debe existir en Play Console como producto **gestionado → consumible**
+/// (one-time) con el mismo identificador.
 class MonetizationConfig {
   MonetizationConfig._();
 
@@ -7,6 +9,23 @@ class MonetizationConfig {
   static const rewardedAdUnitId =
       'ca-app-pub-3143297085616264/5457284961';
 
-  /// Sustituye por el id real del producto en Play Console (Managed product → consumible).
-  static const wrappedSixPackProductId = 'whalyze_wrapped_pack_6';
+  static const String wrappedProductId5 = '05_wrap';
+  static const String wrappedProductId10 = '10_wrap';
+
+  static const Set<String> wrappedProductIds = {
+    wrappedProductId5,
+    wrappedProductId10,
+  };
+
+  /// Créditos de wrapped otorgados tras compra confirmada (o restauración).
+  static int? wrappedSlotsForProductId(String productId) {
+    switch (productId) {
+      case wrappedProductId5:
+        return 5;
+      case wrappedProductId10:
+        return 10;
+      default:
+        return null;
+    }
+  }
 }
