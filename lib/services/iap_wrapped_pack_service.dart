@@ -15,6 +15,30 @@ class IapWrappedPackService {
   bool _listening = false;
   final Map<String, ProductDetails> _productDetailsCache = {};
 
+  /// Último resultado de consulta a Play (para mensajes de error en UI).
+  bool lastBillingUnavailable = false;
+  String? lastProductQueryError;
+  List<String> lastNotFoundProductIds = [];
+
+  /// Texto breve con la causa más probable cuando [buyWrappedPack] falla.
+  String purchaseSetupHint() {
+    if (lastBillingUnavailable) {
+      return 'Google Play (facturación) no está disponible en este dispositivo. '
+          'Comprueba que Play Store esté instalado y actualizado.';
+    }
+    if (lastProductQueryError != null && lastProductQueryError!.isNotEmpty) {
+      return 'Error al pedir productos a Play: $lastProductQueryError';
+    }
+    if (lastNotFoundProductIds.isNotEmpty) {
+      return 'Play no devolvió los IDs: ${lastNotFoundProductIds.join(", ")}. '
+          'Aunque existan en la consola, la prueba suele fallar si la app no está '
+          'instalada desde Play (pista interna/cerrada). No uses solo `flutter run` '
+          'con USB: descarga la app desde la tienda con una cuenta añadida como '
+          'probador de licencias; puede tardar horas en propagarse.';
+    }
+    return 'No hay detalles del producto. Reintenta o instala la build desde Play.';
+  }
+
   /// Detalles cacheados tras [fetchWrappedProducts]; también se rellenan al comprar.
   Map<String, ProductDetails> get cachedProductDetails =>
       Map.unmodifiable(_productDetailsCache);
@@ -70,16 +94,41 @@ class IapWrappedPackService {
   /// Productos activos desde Play Console (precio localizado en [ProductDetails.price]).
   Future<Map<String, ProductDetails>> fetchWrappedProducts() async {
     final iap = InAppPurchase.instance;
-    if (!await iap.isAvailable()) return {};
-    final response = await iap.queryProductDetails(MonetizationConfig.wrappedProductIds);
-    if (response.error != null) {
-      debugPrint('queryProductDetails: ${response.error}');
+    lastBillingUnavailable = false;
+    lastProductQueryError = null;
+    lastNotFoundProductIds = [];
+
+    if (!await iap.isAvailable()) {
+      lastBillingUnavailable = true;
+      debugPrint('IAP: isAvailable() == false');
       return Map.from(_productDetailsCache);
     }
+    final response = await iap
+        .queryProductDetails(MonetizationConfig.wrappedProductIds)
+        .timeout(
+          const Duration(seconds: 25),
+          onTimeout: () {
+            debugPrint(
+              'queryProductDetails: timeout (25s); comprueba conexión y Play.',
+            );
+            return ProductDetailsResponse(
+              productDetails: <ProductDetails>[],
+              notFoundIDs: MonetizationConfig.wrappedProductIds.toList(),
+            );
+          },
+        );
+    if (response.error != null) {
+      final e = response.error!;
+      lastProductQueryError = '${e.code}: ${e.message}';
+      debugPrint('queryProductDetails: $e');
+      return Map.from(_productDetailsCache);
+    }
+    lastNotFoundProductIds = List<String>.from(response.notFoundIDs);
     if (response.notFoundIDs.isNotEmpty) {
       debugPrint(
         'IAP queryProductDetails: notFoundIDs=${response.notFoundIDs} '
-        '(publica la app vía Play pista de prueba y crea los productos activos con el mismo id)',
+        '(los IDs existen en consola pero Play no los devuelve: instala desde '
+        'pista de prueba, cuenta probador, propagación)',
       );
     }
     // No vaciar la caché: si Play devuelve lista vacía (p. ej. billing aún no listo), conserva precios previos.
@@ -104,10 +153,9 @@ class IapWrappedPackService {
     }
     if (details == null) return false;
 
-    await iap.buyConsumable(
+    return iap.buyConsumable(
       purchaseParam: PurchaseParam(productDetails: details),
     );
-    return true;
   }
 
   /// Android/iOS: reemite en el stream compras no consumidas / pendientes de reconocer.

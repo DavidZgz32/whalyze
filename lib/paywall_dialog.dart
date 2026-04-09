@@ -24,7 +24,6 @@ class _PaywallDialogBody extends StatefulWidget {
 
 class _PaywallDialogBodyState extends State<_PaywallDialogBody> {
   bool _adBusy = false;
-  bool _restoreBusy = false;
   String? _purchasingProductId;
   Map<String, ProductDetails> _products = {};
   bool _productsLoading = true;
@@ -48,21 +47,25 @@ class _PaywallDialogBodyState extends State<_PaywallDialogBody> {
   }
 
   Future<void> _loadProducts() async {
+    if (!mounted) return;
     setState(() => _productsLoading = true);
-    for (var attempt = 0; attempt < 4; attempt++) {
-      if (attempt > 0) {
-        await Future<void>.delayed(Duration(milliseconds: 350 * attempt));
+    try {
+      for (var attempt = 0; attempt < 4; attempt++) {
+        if (attempt > 0) {
+          await Future<void>.delayed(Duration(milliseconds: 350 * attempt));
+        }
+        final map = await IapWrappedPackService.instance.fetchWrappedProducts();
+        if (!mounted) return;
+        setState(() {
+          _products = Map<String, ProductDetails>.from(map);
+        });
+        final allFound = MonetizationConfig.wrappedProductIds.every(
+          (id) => map[id] != null,
+        );
+        if (allFound) break;
       }
-      final map = await IapWrappedPackService.instance.fetchWrappedProducts();
-      if (!mounted) return;
-      setState(() {
-        _products = Map<String, ProductDetails>.from(map);
-        if (attempt == 0) _productsLoading = false;
-      });
-      final allFound = MonetizationConfig.wrappedProductIds.every(
-        (id) => map[id] != null,
-      );
-      if (allFound) break;
+    } finally {
+      if (mounted) setState(() => _productsLoading = false);
     }
   }
 
@@ -89,7 +92,7 @@ class _PaywallDialogBodyState extends State<_PaywallDialogBody> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '¡Listo! Tienes +1 wrapped gratis.',
+              '¡Listo! Tienes +2 wrappeds gratis.',
               style: GoogleFonts.poppins(),
             ),
           ),
@@ -115,14 +118,19 @@ class _PaywallDialogBodyState extends State<_PaywallDialogBody> {
     if (_purchasingProductId != null) return;
     setState(() => _purchasingProductId = productId);
     try {
+      if (_products[productId] == null) {
+        await _loadProducts();
+        if (!mounted) return;
+      }
       final ok = await IapWrappedPackService.instance.buyWrappedPack(productId);
       if (!mounted) return;
       if (!ok) {
+        final hint = IapWrappedPackService.instance.purchaseSetupHint();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'No se pudo iniciar la compra. Comprueba que "$productId" existe en Play Console y está activo.',
-              style: GoogleFonts.poppins(),
+              'No se pudo iniciar la compra ($productId).\n$hint',
+              style: GoogleFonts.poppins(fontSize: 13),
             ),
           ),
         );
@@ -141,76 +149,91 @@ class _PaywallDialogBodyState extends State<_PaywallDialogBody> {
     }
   }
 
-  Future<void> _onRestore() async {
-    if (_restoreBusy) return;
-    setState(() => _restoreBusy = true);
-    try {
-      await IapWrappedPackService.instance.restorePurchases();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Buscando compras en Google Play… Si hay alguna pendiente, se aplicará al instante.',
-            style: GoogleFonts.poppins(),
-          ),
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _restoreBusy = false);
-    }
-  }
+  static const _yellowBadge = Color(0xFFFFE082);
 
   Widget _packCard({
     required String productId,
     required int slots,
-    required TextStyle bodyStyle,
+    required bool showCheaperLine,
+    required TextStyle cheaperLineStyle,
   }) {
     final details = _products[productId];
     final priceText = _priceLabel(details, loading: _productsLoading);
     final busy = _purchasingProductId == productId;
+    final greenWrapStyle = GoogleFonts.poppins(
+      fontSize: 15,
+      fontWeight: FontWeight.w600,
+      height: 1.45,
+      color: const Color(0xFF2E7D32),
+    );
 
-    return Material(
-      color: const Color(0xFFF3F6FF),
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: (_purchasingProductId != null || _productsLoading)
-            ? null
-            : () => _onBuyPack(productId, slots),
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Material(
+          color: const Color(0xFFF3F6FF),
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            onTap: _purchasingProductId != null
+                ? null
+                : () => _onBuyPack(productId, slots),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFD0DAF5)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                priceText,
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1E3A5F),
-                ),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFD0DAF5)),
               ),
-              const SizedBox(height: 6),
-              Text(
-                'por $slots wrappeds',
-                style: bodyStyle,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    priceText,
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF1E3A5F),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text('+$slots wrappeds', style: greenWrapStyle),
+                  if (showCheaperLine) ...[
+                    const SizedBox(height: 4),
+                    Text('25% más barato', style: cheaperLineStyle),
+                  ],
+                  if (busy) ...[
+                    const SizedBox(height: 10),
+                    const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ],
+                ],
               ),
-              if (busy) ...[
-                const SizedBox(height: 10),
-                const SizedBox(
-                  height: 22,
-                  width: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ],
-            ],
+            ),
           ),
         ),
-      ),
+        Positioned(
+          top: 8,
+          right: 8,
+          child: Container(
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(
+              color: _yellowBadge,
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFFE6C85C)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 3,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -226,6 +249,12 @@ class _PaywallDialogBodyState extends State<_PaywallDialogBody> {
       fontWeight: FontWeight.w400,
       height: 1.45,
       color: Colors.black87,
+    );
+    final cheaperLineStyle = GoogleFonts.poppins(
+      fontSize: 12,
+      fontWeight: FontWeight.w500,
+      height: 1.35,
+      color: Colors.black54,
     );
 
     return AlertDialog(
@@ -243,25 +272,29 @@ class _PaywallDialogBodyState extends State<_PaywallDialogBody> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 8),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _packCard(
-                    productId: MonetizationConfig.wrappedProductId5,
-                    slots: 5,
-                    bodyStyle: bodyStyle,
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: _packCard(
+                      productId: MonetizationConfig.wrappedProductId5,
+                      slots: 5,
+                      showCheaperLine: false,
+                      cheaperLineStyle: cheaperLineStyle,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _packCard(
-                    productId: MonetizationConfig.wrappedProductId10,
-                    slots: 10,
-                    bodyStyle: bodyStyle,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _packCard(
+                      productId: MonetizationConfig.wrappedProductId10,
+                      slots: 10,
+                      showCheaperLine: true,
+                      cheaperLineStyle: cheaperLineStyle,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 12),
             Material(
@@ -280,7 +313,7 @@ class _PaywallDialogBodyState extends State<_PaywallDialogBody> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Ver anuncio',
+                        'Ver anuncio 30 segundos',
                         style: GoogleFonts.poppins(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -289,7 +322,7 @@ class _PaywallDialogBodyState extends State<_PaywallDialogBody> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        '+1 wrapped gratis',
+                        '+2 wrappeds gratis',
                         style: bodyStyle.copyWith(
                           color: const Color(0xFF2E7D32),
                           fontWeight: FontWeight.w600,
@@ -312,19 +345,6 @@ class _PaywallDialogBodyState extends State<_PaywallDialogBody> {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: _restoreBusy ? null : _onRestore,
-          child: _restoreBusy
-              ? SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                )
-              : Text('Restaurar compras', style: GoogleFonts.poppins()),
-        ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: Text('Cerrar', style: GoogleFonts.poppins()),
@@ -377,13 +397,8 @@ void showFirestoreErrorSnack(BuildContext context) {
 }
 
 /// Returns `true` if navigation to [WrappedScreen] is allowed.
-/// [isGroup] debe coincidir con si el chat tiene más de dos participantes (export grupal).
-Future<bool> guardOpenWrapped(
-  BuildContext context, {
-  required bool isGroup,
-}) async {
-  final result =
-      await FirestoreUserService.instance.preflightOpenWrapped(isGroup: isGroup);
+Future<bool> guardOpenWrapped(BuildContext context) async {
+  final result = await FirestoreUserService.instance.preflightOpenWrapped();
   switch (result) {
     case PreflightOpenWrapped.ok:
       return true;

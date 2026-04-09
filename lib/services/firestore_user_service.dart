@@ -9,14 +9,15 @@ import 'package:uuid/uuid.dart';
 import '../monetization_config.dart';
 
 const _kPrefsDeviceId = 'firebase_user_device_id';
-const _kPrefsIndividualCount = 'user_wrapped_individual_cache';
-const _kPrefsGroupCount = 'user_wrapped_group_cache';
-const _kPrefsRemaining = 'user_wrapped_remaining_cache';
+/// Caché local del campo Firestore [wrappedCount] (créditos restantes).
+const _kPrefsWrappedRemaining = 'user_wrapped_remaining_cache';
 const _kPrefsHasPaid = 'user_has_paid_cache';
 
-const _kFieldIndividual = 'individualWrappedCount';
-const _kFieldGroup = 'groupWrappedCount';
-const _kFieldRemaining = 'remainingWrappeds';
+/// Créditos de wrapped disponibles (inicio 2 gratis; anuncios/IAP suman).
+const _kFieldWrappedCount = 'wrappedCount';
+/// Esquema v2: [wrappedCount] = créditos restantes (no confundir con legacy).
+const _kFieldSchemaVersion = 'schemaVersion';
+const _kSchemaVersion = 2;
 
 class PaywallRequiredException implements Exception {
   PaywallRequiredException();
@@ -32,50 +33,44 @@ class FirestoreUserNotReadyException implements Exception {
 
 enum PreflightOpenWrapped { ok, paywall, deviceMismatch, notSignedIn, error }
 
-/// Cupo actual para mostrar en UI (p. ej. favoritos). Firestore es la fuente de verdad vía [FirestoreUserService.fetchQuotaSnapshot].
+/// Cupo para UI (p. ej. favoritos). Firestore es la fuente de verdad vía [FirestoreUserService.fetchQuotaSnapshot].
 class UserWrappedQuotaSnapshot {
   const UserWrappedQuotaSnapshot({
-    required this.individualWrappedCount,
-    required this.groupWrappedCount,
-    required this.remainingWrappeds,
+    required this.wrappedRemaining,
     required this.hasPaid,
   });
 
-  final int individualWrappedCount;
-  final int groupWrappedCount;
-  final int remainingWrappeds;
+  /// Créditos restantes (ignorar si [hasPaid]).
+  final int wrappedRemaining;
   final bool hasPaid;
 
-  /// Creaciones posibles de un tipo: 1 gratis si aún no usaste ese tipo + [remainingWrappeds] compartido.
-  /// `-1` significa ilimitado ([hasPaid] legacy).
-  int remainingForKind({required bool isGroup}) {
-    if (hasPaid) return -1;
-    final freeSlot = isGroup
-        ? (groupWrappedCount < 1 ? 1 : 0)
-        : (individualWrappedCount < 1 ? 1 : 0);
-    return freeSlot + remainingWrappeds;
-  }
+  /// Créditos que aún puedes gastar; -1 = ilimitado ([hasPaid]).
+  int get displayRemaining => hasPaid ? -1 : wrappedRemaining;
 }
 
 bool _legacyHasPaid(Map<String, dynamic> d) => d['hasPaid'] as bool? ?? false;
 
-/// Lee contadores efectivos; migra campos antiguos (`wrappedCount`, `wrappedQuota`) si faltan los nuevos.
-int _individualCount(Map<String, dynamic> d) {
-  final v = d[_kFieldIndividual];
+// --- Lectura legacy (solo migración) ---
+
+int _legacyIndividual(Map<String, dynamic> d) {
+  final v = d['individualWrappedCount'];
   if (v is num) return v.toInt();
+  if (d['wrappedQuota'] is num && d['wrappedCount'] is num) {
+    return 0;
+  }
   final legacy = d['wrappedCount'];
   if (legacy is num) return legacy.toInt();
   return 0;
 }
 
-int _groupCount(Map<String, dynamic> d) {
-  final v = d[_kFieldGroup];
+int _legacyGroup(Map<String, dynamic> d) {
+  final v = d['groupWrappedCount'];
   if (v is num) return v.toInt();
   return 0;
 }
 
-int _remainingWrappeds(Map<String, dynamic> d) {
-  final v = d[_kFieldRemaining];
+int _legacyRemainingPool(Map<String, dynamic> d) {
+  final v = d['remainingWrappeds'];
   if (v is num) return v.toInt();
   final quota = d['wrappedQuota'];
   final count = d['wrappedCount'];
@@ -85,15 +80,33 @@ int _remainingWrappeds(Map<String, dynamic> d) {
   return 0;
 }
 
-bool _canOpenWrappedKind(Map<String, dynamic> d, {required bool isGroup}) {
-  if (_legacyHasPaid(d)) return true;
-  if (isGroup) {
-    if (_groupCount(d) < 1) return true;
-    return _remainingWrappeds(d) > 0;
+/// [wrappedCount] en Firestore = créditos restantes con [schemaVersion] ≥ 2.
+/// Si falta [schemaVersion], se calcula desde el esquema antiguo.
+int _effectiveWrappedRemaining(Map<String, dynamic> d) {
+  if (_legacyHasPaid(d)) return 0;
+  final sv = (d[_kFieldSchemaVersion] as num?)?.toInt() ?? 0;
+  if (sv >= _kSchemaVersion) {
+    final v = d[_kFieldWrappedCount];
+    if (v is num) return math.max(0, v.toInt());
+    return 2;
   }
-  if (_individualCount(d) < 1) return true;
-  return _remainingWrappeds(d) > 0;
+  final ind = _legacyIndividual(d);
+  final grp = _legacyGroup(d);
+  final pool = _legacyRemainingPool(d);
+  return math.max(0, 2 + pool - ind - grp);
 }
+
+bool _canOpenWrapped(Map<String, dynamic> d) {
+  if (_legacyHasPaid(d)) return true;
+  return _effectiveWrappedRemaining(d) > 0;
+}
+
+Map<String, dynamic> _stripLegacyWrappedFields() => {
+      'individualWrappedCount': FieldValue.delete(),
+      'groupWrappedCount': FieldValue.delete(),
+      'remainingWrappeds': FieldValue.delete(),
+      'wrappedQuota': FieldValue.delete(),
+    };
 
 /// Firestore `users/{uid}` as source of truth; anonymous auth + device binding + wrapped quota.
 class FirestoreUserService {
@@ -117,13 +130,9 @@ class FirestoreUserService {
 
   Future<void> _cacheFromDocData(Map<String, dynamic>? data) async {
     final prefs = await SharedPreferences.getInstance();
-    final ind = _individualCount(data ?? {});
-    final grp = _groupCount(data ?? {});
-    final rem = _remainingWrappeds(data ?? {});
     final paid = _legacyHasPaid(data ?? {});
-    await prefs.setInt(_kPrefsIndividualCount, ind);
-    await prefs.setInt(_kPrefsGroupCount, grp);
-    await prefs.setInt(_kPrefsRemaining, rem);
+    final rem = paid ? 0 : _effectiveWrappedRemaining(data ?? {});
+    await prefs.setInt(_kPrefsWrappedRemaining, rem);
     await prefs.setBool(_kPrefsHasPaid, paid);
   }
 
@@ -153,16 +162,14 @@ class FirestoreUserService {
         localDeviceId ??= _uuid.v4();
         await prefs.setString(_kPrefsDeviceId, localDeviceId);
         await ref.set({
-          _kFieldIndividual: 0,
-          _kFieldGroup: 0,
-          _kFieldRemaining: 0,
+          _kFieldWrappedCount: 2,
+          _kFieldSchemaVersion: _kSchemaVersion,
           'hasPaid': false,
           'deviceId': localDeviceId,
         });
         await _cacheFromDocData({
-          _kFieldIndividual: 0,
-          _kFieldGroup: 0,
-          _kFieldRemaining: 0,
+          _kFieldWrappedCount: 2,
+          _kFieldSchemaVersion: _kSchemaVersion,
           'hasPaid': false,
         });
         _bootstrapDone = true;
@@ -202,9 +209,7 @@ class FirestoreUserService {
   }
 
   /// Reads server state before opening the wrapped flow (UX gate).
-  Future<PreflightOpenWrapped> preflightOpenWrapped({
-    required bool isGroup,
-  }) async {
+  Future<PreflightOpenWrapped> preflightOpenWrapped() async {
     if (_deviceIdMismatch) return PreflightOpenWrapped.deviceMismatch;
 
     final user = FirebaseAuth.instance.currentUser;
@@ -223,7 +228,7 @@ class FirestoreUserService {
       final data = snap.data() ?? {};
       await _cacheFromDocData(data);
 
-      if (!_canOpenWrappedKind(data, isGroup: isGroup)) {
+      if (!_canOpenWrapped(data)) {
         return PreflightOpenWrapped.paywall;
       }
       return PreflightOpenWrapped.ok;
@@ -252,11 +257,10 @@ class FirestoreUserService {
       }
       final data = snap.data() ?? {};
       await _cacheFromDocData(data);
+      final paid = _legacyHasPaid(data);
       return UserWrappedQuotaSnapshot(
-        individualWrappedCount: _individualCount(data),
-        groupWrappedCount: _groupCount(data),
-        remainingWrappeds: _remainingWrappeds(data),
-        hasPaid: _legacyHasPaid(data),
+        wrappedRemaining: paid ? 0 : _effectiveWrappedRemaining(data),
+        hasPaid: paid,
       );
     } catch (e, st) {
       debugPrint('fetchQuotaSnapshot: $e\n$st');
@@ -264,8 +268,8 @@ class FirestoreUserService {
     }
   }
 
-  /// Atomically checks paywall rules and increments counters. [isGroup] must match el tipo de export.
-  Future<void> consumeWrappedSlot({required bool isGroup}) async {
+  /// Atomically checks paywall rules and decrements [wrappedCount] (1 por creación; cualquier tipo).
+  Future<void> consumeWrappedSlot() async {
     if (_deviceIdMismatch) throw DeviceSecurityException();
 
     final user = FirebaseAuth.instance.currentUser;
@@ -285,9 +289,8 @@ class FirestoreUserService {
       final snap = await tx.get(ref);
       if (!snap.exists) {
         tx.set(ref, {
-          _kFieldIndividual: isGroup ? 0 : 1,
-          _kFieldGroup: isGroup ? 1 : 0,
-          _kFieldRemaining: 0,
+          _kFieldWrappedCount: 1,
+          _kFieldSchemaVersion: _kSchemaVersion,
           'hasPaid': false,
           'deviceId': boundDeviceId,
         });
@@ -296,35 +299,17 @@ class FirestoreUserService {
 
       final d = snap.data() ?? {};
       final paid = _legacyHasPaid(d);
-      var ind = _individualCount(d);
-      var grp = _groupCount(d);
-      var rem = _remainingWrappeds(d);
+      var rem = _effectiveWrappedRemaining(d);
 
       if (!paid) {
-        final allowed = _canOpenWrappedKind(d, isGroup: isGroup);
-        if (!allowed) throw PaywallRequiredException();
-      }
-
-      if (isGroup) {
-        grp += 1;
-        if (!paid && _groupCount(d) >= 1) {
-          rem -= 1;
-        }
-      } else {
-        ind += 1;
-        if (!paid && _individualCount(d) >= 1) {
-          rem -= 1;
-        }
-      }
-
-      if (!paid && rem < 0) {
-        throw PaywallRequiredException();
+        if (rem <= 0) throw PaywallRequiredException();
+        rem -= 1;
       }
 
       final update = <String, dynamic>{
-        _kFieldIndividual: ind,
-        _kFieldGroup: grp,
-        _kFieldRemaining: rem,
+        _kFieldWrappedCount: rem,
+        _kFieldSchemaVersion: _kSchemaVersion,
+        ..._stripLegacyWrappedFields(),
       };
 
       tx.update(ref, update);
@@ -334,7 +319,7 @@ class FirestoreUserService {
     await _cacheFromDocData(fresh.data());
   }
 
-  /// +1 wrapped compartido (pool) tras anuncio bonificado.
+  /// +2 wrappeds tras anuncio bonificado.
   Future<void> grantBonusWrappedSlotFromAd() async {
     if (_deviceIdMismatch) throw DeviceSecurityException();
 
@@ -349,16 +334,19 @@ class FirestoreUserService {
       if (!snap.exists) return;
       final d = snap.data() ?? {};
       if (_legacyHasPaid(d)) return;
-      final rem = _remainingWrappeds(d);
-      tx.update(ref, {_kFieldRemaining: rem + 1});
+      final rem = _effectiveWrappedRemaining(d);
+      tx.update(ref, {
+        _kFieldWrappedCount: rem + 2,
+        _kFieldSchemaVersion: _kSchemaVersion,
+        ..._stripLegacyWrappedFields(),
+      });
     });
 
     final fresh = await ref.get();
     await _cacheFromDocData(fresh.data());
   }
 
-  /// Tras compra IAP completada: incrementa [remainingWrappeds] (+5 / +10) y [hasPaid] = true.
-  /// Usa transacción para lectura-modificación atómica.
+  /// Tras compra IAP completada: [hasPaid] = true (ilimitado en esta app).
   Future<void> applySuccessfulPurchase(String productId) async {
     final add = MonetizationConfig.wrappedSlotsForProductId(productId);
     if (add == null || add <= 0) return;
@@ -382,20 +370,19 @@ class FirestoreUserService {
       final snap = await tx.get(ref);
       if (!snap.exists) {
         tx.set(ref, {
-          _kFieldIndividual: 0,
-          _kFieldGroup: 0,
-          _kFieldRemaining: add,
+          _kFieldWrappedCount: 0,
+          _kFieldSchemaVersion: _kSchemaVersion,
           'hasPaid': true,
           'deviceId': boundDeviceId,
         });
         return;
       }
 
-      final d = snap.data() ?? {};
-      final rem = _remainingWrappeds(d);
       tx.update(ref, {
-        _kFieldRemaining: rem + add,
+        _kFieldWrappedCount: 0,
+        _kFieldSchemaVersion: _kSchemaVersion,
         'hasPaid': true,
+        ..._stripLegacyWrappedFields(),
       });
     });
 

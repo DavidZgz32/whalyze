@@ -1,7 +1,13 @@
 /// IDs de AdMob (Whalyze) y SKUs de compras in-app en Google Play.
 ///
-/// Cada id debe existir en Play Console como producto **gestionado → consumible**
-/// (one-time) con el mismo identificador.
+/// En Play Console aparecen como **Productos únicos** (p. ej. `05_wrap`, `10_wrap`).
+/// El id debe coincidir **exactamente** con el de la consola.
+///
+/// **Si el producto existe en la web pero la app no comprueba:** Google Play a veces
+/// no devuelve el SKU hasta que la app está **instalada desde la Play Store**
+/// (pista interna/cerrada), con la cuenta en **probadores de licencias**, y puede
+/// tardar en propagarse. Probar solo con `flutter run` + USB suele dar precios vacíos
+/// o "producto no encontrado" aunque el ID sea correcto.
 class MonetizationConfig {
   MonetizationConfig._();
 

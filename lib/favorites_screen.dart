@@ -28,6 +28,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _loadWrappeds();
+    _loadQuota();
   }
 
   Future<void> _loadQuota() async {
@@ -46,7 +47,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     });
   }
 
-  String _remainingQuotaSubtitle({required bool isGroup}) {
+  String _remainingQuotaSubtitle() {
     if (_quotaLoading) return 'Cargando saldo de wrappeds…';
     final q = _quota;
     if (q == null) {
@@ -55,11 +56,139 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     if (q.hasPaid) {
       return 'Puedes crear wrappeds sin límite.';
     }
-    final n = q.remainingForKind(isGroup: isGroup);
-    if (isGroup) {
-      return 'Te quedan $n wrappeds grupales por crear.';
+    final n = q.wrappedRemaining;
+    return 'Te quedan $n créditos (1 crédito = wrapped).';
+  }
+
+  static const _coinGoldA = Color(0xFFFFE082);
+  static const _coinGoldB = Color(0xFFF9A825);
+  static const _coinGoldC = Color(0xFFFFC107);
+  static const _coinBorder = Color(0xFFB8860B);
+  static const _coinText = Color(0xFF4E342E);
+
+  static const Widget _creditIcon = Icon(
+    Icons.monetization_on_rounded,
+    color: _coinGoldB,
+    size: 26,
+    shadows: [
+      Shadow(
+        color: Color(0x33000000),
+        blurRadius: 1,
+        offset: Offset(0, 0.5),
+      ),
+    ],
+  );
+
+  Widget _coinBadge({required Widget child}) {
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const LinearGradient(
+          colors: [_coinGoldA, _coinGoldB, _coinGoldC],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: _coinBorder, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Center(child: child),
+    );
+  }
+
+  Widget _buildQuotaCredits() {
+    if (_quotaLoading) {
+      return const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _creditIcon,
+          SizedBox(width: 8),
+          SizedBox(
+            width: 36,
+            height: 36,
+            child: Padding(
+              padding: EdgeInsets.all(8),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: _coinGoldB,
+              ),
+            ),
+          ),
+        ],
+      );
     }
-    return 'Te quedan $n wrappeds individuales por crear.';
+    final q = _quota;
+    if (q == null) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.monetization_on_rounded, color: Colors.grey.shade400, size: 26),
+          const SizedBox(width: 8),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.grey.shade300,
+            ),
+            child: Center(
+              child: Text(
+                '?',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black54,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    if (q.hasPaid) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _creditIcon,
+          const SizedBox(width: 8),
+          _coinBadge(
+            child: Text(
+              '∞',
+              style: GoogleFonts.inter(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: _coinText,
+                height: 1,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _creditIcon,
+        const SizedBox(width: 8),
+        _coinBadge(
+          child: Text(
+            '${q.wrappedRemaining}',
+            style: GoogleFonts.inter(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: _coinText,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   /// Grupo WhatsApp: más de 2 participantes. 1:1 queda en Individual.
@@ -98,8 +227,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     );
   }
 
-  Widget _buildEmptyState(String message, {required bool isGroup}) {
-    final subtitle = _remainingQuotaSubtitle(isGroup: isGroup);
+  Widget _buildEmptyState(String message) {
+    final subtitle = _remainingQuotaSubtitle();
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -143,11 +272,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
   Widget _buildWrappedList(
     List<WrappedModel> items,
-    String emptyMessage, {
-    required bool isGroupTab,
-  }) {
+    String emptyMessage,
+  ) {
     if (items.isEmpty) {
-      return _buildEmptyState(emptyMessage, isGroup: isGroupTab);
+      return _buildEmptyState(emptyMessage);
     }
     return ListView.builder(
       padding: const EdgeInsets.all(16.0),
@@ -317,7 +445,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           backgroundColor: appBarColor,
           elevation: 0,
           title: Text(
-            'Favoritos',
+            'Mis wrappeds',
             style: GoogleFonts.inter(
               color: Colors.black87,
               fontSize: 24,
@@ -325,6 +453,12 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             ),
           ),
           centerTitle: true,
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: Center(child: _buildQuotaCredits()),
+            ),
+          ],
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(48),
             child: Material(
@@ -347,12 +481,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             _buildWrappedList(
               _individualWrappeds,
               '¡Todavía no has creado ningún wrapped! Importa un chat y analiza vuestra actividad.',
-              isGroupTab: false,
             ),
             _buildWrappedList(
               _groupWrappeds,
               '¡Todavía no has creado ningún wrapped grupal! Importa un chat grupal y analiza vuestra actividad en grupo.',
-              isGroupTab: true,
             ),
           ],
         ),

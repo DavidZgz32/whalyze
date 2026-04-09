@@ -17,7 +17,6 @@ import 'onboarding_preferences.dart';
 import 'onboarding_screen.dart';
 import 'pip_demo_screen.dart';
 import 'paywall_dialog.dart';
-import 'whatsapp_processor.dart';
 import 'services/firestore_user_service.dart';
 import 'services/iap_wrapped_pack_service.dart';
 
@@ -465,9 +464,7 @@ class _HomeScreenState extends State<HomeScreen> {
         try {
           final content = await _readChatContentFromFile(filePath);
           if (!mounted) return;
-          final isGroup =
-              WhatsAppProcessor.processFile(content).participants.length > 2;
-          if (!await guardOpenWrapped(context, isGroup: isGroup)) return;
+          if (!await guardOpenWrapped(context)) return;
           if (!mounted) return;
           Navigator.of(context).push(
             MaterialPageRoute(
@@ -508,9 +505,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openDemo() async {
-    final isGroup =
-        WhatsAppProcessor.processFile(_demoChatContent).participants.length > 2;
-    if (!await guardOpenWrapped(context, isGroup: isGroup)) return;
+    if (!await guardOpenWrapped(context)) return;
     if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -567,9 +562,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final content = await _readChatContentFromFile(pathToRead);
 
       if (!mounted) return;
-      final isGroup =
-          WhatsAppProcessor.processFile(content).participants.length > 2;
-      if (!await guardOpenWrapped(context, isGroup: isGroup)) return;
+      if (!await guardOpenWrapped(context)) return;
       if (!mounted) return;
       Navigator.of(context).push(
         MaterialPageRoute(
@@ -635,7 +628,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ListTile(
                 leading: const Icon(Icons.favorite_border),
                 title: Text(
-                  'Mis favoritos',
+                  'Mis wrappeds',
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     fontWeight: FontWeight.w400,
@@ -759,6 +752,7 @@ class _HomeScreenState extends State<HomeScreen> {
         leading: IconButton(
           icon: const Icon(Icons.favorite_border),
           color: Colors.black,
+          tooltip: 'Mis wrappeds',
           onPressed: () async {
             await Navigator.of(context).push(
               MaterialPageRoute(

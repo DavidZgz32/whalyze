@@ -40,8 +40,7 @@ class _WrappedScreenState extends State<WrappedScreen> {
       return;
     }
     try {
-      final isGroup = _data!.participants.length > 2;
-      await FirestoreUserService.instance.consumeWrappedSlot(isGroup: isGroup);
+      await FirestoreUserService.instance.consumeWrappedSlot();
     } on PaywallRequiredException {
       if (mounted) {
         await showPaywallDialog(context);
