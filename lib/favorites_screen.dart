@@ -66,25 +66,12 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   static const _coinBorder = Color(0xFFB8860B);
   static const _coinText = Color(0xFF4E342E);
 
-  static const Widget _creditIcon = Icon(
-    Icons.monetization_on_rounded,
-    color: _coinGoldB,
-    size: 26,
-    shadows: [
-      Shadow(
-        color: Color(0x33000000),
-        blurRadius: 1,
-        offset: Offset(0, 0.5),
-      ),
-    ],
-  );
-
-  Widget _coinBadge({required Widget child}) {
+  Widget _creditBadge({required Widget child}) {
     return Container(
-      width: 36,
-      height: 36,
+      constraints: const BoxConstraints(minHeight: 26),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
+        borderRadius: BorderRadius.circular(14),
         gradient: const LinearGradient(
           colors: [_coinGoldA, _coinGoldB, _coinGoldC],
           begin: Alignment.topLeft,
@@ -99,95 +86,99 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           ),
         ],
       ),
-      child: Center(child: child),
+      alignment: Alignment.center,
+      child: child,
+    );
+  }
+
+  /// Icono + valor: créditos de wrapped (no dinero).
+  Widget _creditBadgeLabel({
+    required Widget value,
+    bool muted = false,
+  }) {
+    final iconColor = muted
+        ? Colors.black54
+        : _coinText.withValues(alpha: 0.92);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.confirmation_number_outlined,
+          size: 15,
+          color: iconColor,
+        ),
+        const SizedBox(width: 5),
+        value,
+      ],
     );
   }
 
   Widget _buildQuotaCredits() {
+    final badgeTextStyle = GoogleFonts.inter(
+      fontSize: 13,
+      fontWeight: FontWeight.w800,
+      color: _coinText,
+      height: 1,
+    );
     if (_quotaLoading) {
-      return const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _creditIcon,
-          SizedBox(width: 8),
-          SizedBox(
-            width: 36,
-            height: 36,
-            child: Padding(
-              padding: EdgeInsets.all(8),
+      return _creditBadge(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.confirmation_number_outlined,
+              size: 15,
+              color: _coinText.withValues(alpha: 0.45),
+            ),
+            const SizedBox(width: 5),
+            SizedBox(
+              width: 16,
+              height: 16,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 color: _coinGoldB,
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       );
     }
     final q = _quota;
     if (q == null) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.monetization_on_rounded, color: Colors.grey.shade400, size: 26),
-          const SizedBox(width: 8),
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.grey.shade300,
-            ),
-            child: Center(
-              child: Text(
-                '?',
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black54,
-                ),
-              ),
-            ),
+      return Container(
+        constraints: const BoxConstraints(minHeight: 26),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          color: Colors.grey.shade300,
+        ),
+        alignment: Alignment.center,
+        child: _creditBadgeLabel(
+          muted: true,
+          value: Text(
+            '—',
+            style: badgeTextStyle.copyWith(color: Colors.black54),
           ),
-        ],
+        ),
       );
     }
     if (q.hasPaid) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _creditIcon,
-          const SizedBox(width: 8),
-          _coinBadge(
-            child: Text(
-              '∞',
-              style: GoogleFonts.inter(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: _coinText,
-                height: 1,
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _creditIcon,
-        const SizedBox(width: 8),
-        _coinBadge(
-          child: Text(
-            '${q.wrappedRemaining}',
-            style: GoogleFonts.inter(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: _coinText,
-            ),
+      return _creditBadge(
+        child: _creditBadgeLabel(
+          value: Text(
+            '∞',
+            style: badgeTextStyle.copyWith(fontSize: 15, height: 1),
           ),
         ),
-      ],
+      );
+    }
+    return _creditBadge(
+      child: _creditBadgeLabel(
+        value: Text(
+          '${q.wrappedRemaining}',
+          style: badgeTextStyle,
+        ),
+      ),
     );
   }
 
