@@ -9,6 +9,8 @@ import 'package:uuid/uuid.dart';
 import '../monetization_config.dart';
 
 const _kPrefsDeviceId = 'firebase_user_device_id';
+/// Última vez que se escribió [lastActiveAt] en Firestore (epoch ms local).
+const _kPrefsLastActiveFirestoreWriteAt = 'user_last_active_firestore_write_at_ms';
 /// Caché local del campo Firestore [wrappedCount] (créditos restantes).
 const _kPrefsWrappedRemaining = 'user_wrapped_remaining_cache';
 const _kPrefsHasPaid = 'user_has_paid_cache';
@@ -18,6 +20,9 @@ const _kFieldWrappedCount = 'wrappedCount';
 /// Esquema v2: [wrappedCount] = créditos restantes (no confundir con legacy).
 const _kFieldSchemaVersion = 'schemaVersion';
 const _kSchemaVersion = 2;
+const _kFieldCreatedAt = 'createdAt';
+const _kFieldLastActiveAt = 'lastActiveAt';
+const _kLastActiveMinInterval = Duration(hours: 24);
 
 class PaywallRequiredException implements Exception {
   PaywallRequiredException();
@@ -128,6 +133,34 @@ class FirestoreUserService {
     return _db.collection('users').doc(uid);
   }
 
+  Future<void> _recordLastActiveThrottleNow(SharedPreferences prefs) async {
+    await prefs.setInt(
+      _kPrefsLastActiveFirestoreWriteAt,
+      DateTime.now().millisecondsSinceEpoch,
+    );
+  }
+
+  bool _shouldWriteLastActiveToFirestore(SharedPreferences prefs) {
+    final last = prefs.getInt(_kPrefsLastActiveFirestoreWriteAt);
+    if (last == null) return true;
+    return DateTime.now().millisecondsSinceEpoch - last >=
+        _kLastActiveMinInterval.inMilliseconds;
+  }
+
+  /// Escribe [lastActiveAt] en servidor solo si el throttle local (24 h) lo permite.
+  Future<void> _updateLastActiveAtIfDue(
+    DocumentReference<Map<String, dynamic>> ref,
+    SharedPreferences prefs,
+  ) async {
+    if (!_shouldWriteLastActiveToFirestore(prefs)) return;
+    try {
+      await ref.update({_kFieldLastActiveAt: FieldValue.serverTimestamp()});
+      await _recordLastActiveThrottleNow(prefs);
+    } catch (e, st) {
+      debugPrint('FirestoreUserService._updateLastActiveAtIfDue: $e\n$st');
+    }
+  }
+
   Future<void> _cacheFromDocData(Map<String, dynamic>? data) async {
     final prefs = await SharedPreferences.getInstance();
     final paid = _legacyHasPaid(data ?? {});
@@ -166,7 +199,10 @@ class FirestoreUserService {
           _kFieldSchemaVersion: _kSchemaVersion,
           'hasPaid': false,
           'deviceId': localDeviceId,
+          _kFieldCreatedAt: FieldValue.serverTimestamp(),
+          _kFieldLastActiveAt: FieldValue.serverTimestamp(),
         });
+        await _recordLastActiveThrottleNow(prefs);
         await _cacheFromDocData({
           _kFieldWrappedCount: 2,
           _kFieldSchemaVersion: _kSchemaVersion,
@@ -185,6 +221,7 @@ class FirestoreUserService {
         if (remoteDevice != null && remoteDevice.isNotEmpty) {
           await prefs.setString(_kPrefsDeviceId, remoteDevice);
         }
+        await _updateLastActiveAtIfDue(ref, prefs);
         _bootstrapDone = true;
         return;
       }
@@ -201,6 +238,7 @@ class FirestoreUserService {
         await ref.update({'deviceId': localDeviceId});
       }
 
+      await _updateLastActiveAtIfDue(ref, prefs);
       _bootstrapDone = true;
     } catch (e, st) {
       debugPrint('FirestoreUserService.bootstrap: $e\n$st');
@@ -293,6 +331,7 @@ class FirestoreUserService {
           _kFieldSchemaVersion: _kSchemaVersion,
           'hasPaid': false,
           'deviceId': boundDeviceId,
+          _kFieldCreatedAt: FieldValue.serverTimestamp(),
         });
         return;
       }
@@ -374,6 +413,7 @@ class FirestoreUserService {
           _kFieldSchemaVersion: _kSchemaVersion,
           'hasPaid': true,
           'deviceId': boundDeviceId,
+          _kFieldCreatedAt: FieldValue.serverTimestamp(),
         });
         return;
       }
