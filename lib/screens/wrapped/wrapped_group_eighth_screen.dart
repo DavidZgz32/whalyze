@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../theme/wrapped_content_surfaces.dart';
 import '../../whatsapp_processor.dart';
 
 /// Pantalla 8 del wrapped grupal (índice 7 del slideshow): Hitos del chat.
@@ -37,6 +38,7 @@ class _WrappedGroupEighthScreenState extends State<WrappedGroupEighthScreen>
   late List<Animation<double>> _rowValue2Animations;
 
   static const Color _numberBadgeBg = Color(0xFF00B872);
+  static const int _milestoneRowCount = 5;
 
   bool _animationsCompleted = false;
 
@@ -115,7 +117,7 @@ class _WrappedGroupEighthScreenState extends State<WrappedGroupEighthScreen>
           parent: _titlePositionController, curve: Curves.easeInOut),
     );
 
-    const rowCount = 4;
+    const rowCount = _milestoneRowCount;
     _rowTitleControllers = List.generate(
       rowCount,
       (_) => AnimationController(
@@ -175,7 +177,7 @@ class _WrappedGroupEighthScreenState extends State<WrappedGroupEighthScreen>
   Future<void> _animateRowsSequentially() async {
     await Future.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < _milestoneRowCount; i++) {
       if (!mounted) return;
       _rowTitleControllers[i].forward();
       await Future.delayed(const Duration(milliseconds: 2000));
@@ -184,7 +186,7 @@ class _WrappedGroupEighthScreenState extends State<WrappedGroupEighthScreen>
       await Future.delayed(const Duration(milliseconds: 1200));
       if (!mounted) return;
       _rowValue2Controllers[i].forward();
-      if (i < 3) {
+      if (i < _milestoneRowCount - 1) {
         await Future.delayed(const Duration(milliseconds: 1200));
       }
     }
@@ -266,6 +268,11 @@ class _WrappedGroupEighthScreenState extends State<WrappedGroupEighthScreen>
         value1: '$totalMultimedia',
         value2: '',
       ),
+      _RowData(
+        title: 'Veces que se cambió el nombre del grupo',
+        value1: '${widget.data.groupRenameCount}',
+        value2: '',
+      ),
     ];
 
     final screenHeight = MediaQuery.of(context).size.height;
@@ -289,7 +296,7 @@ class _WrappedGroupEighthScreenState extends State<WrappedGroupEighthScreen>
             builder: (context, child) {
               final centerY = screenHeight / 2;
               final titleStartY = centerY - topPadding;
-              final titleEndY = 0.0;
+              const titleEndY = 0.0;
               final currentTitleY = titleStartY -
                   (titleStartY - titleEndY) * _titlePositionAnimation.value;
 
@@ -322,21 +329,31 @@ class _WrappedGroupEighthScreenState extends State<WrappedGroupEighthScreen>
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  for (int i = 0; i < dataRows.length; i++) ...[
-                    Table(
-                      columnWidths: const {
-                        0: FlexColumnWidth(2),
-                        1: FlexColumnWidth(1.2),
-                      },
-                      defaultVerticalAlignment:
-                          TableCellVerticalAlignment.middle,
-                      children: [
-                        _buildTitleValueRow(dataRows[i], i),
-                      ],
+                  for (int i = 0; i < dataRows.length; i++)
+                    FadeTransition(
+                      opacity: _rowTitleAnimations[i],
+                      child: WrappedGlassCard(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Table(
+                              columnWidths: const {
+                                0: FlexColumnWidth(2),
+                                1: FlexColumnWidth(1.2),
+                              },
+                              defaultVerticalAlignment:
+                                  TableCellVerticalAlignment.middle,
+                              children: [
+                                _buildTitleValueRow(dataRows[i], i),
+                              ],
+                            ),
+                            if (dataRows[i].value2.isNotEmpty)
+                              _buildDateRow(dataRows[i].value2, i),
+                          ],
+                        ),
+                      ),
                     ),
-                    if (dataRows[i].value2.isNotEmpty)
-                      _buildDateRow(dataRows[i].value2, i),
-                  ],
                   const SizedBox(height: 24),
                 ],
               ),
@@ -365,22 +382,19 @@ class _WrappedGroupEighthScreenState extends State<WrappedGroupEighthScreen>
     return TableRow(
       children: [
         Padding(
-          padding: const EdgeInsets.only(right: 12, top: 14, bottom: 8),
-          child: FadeTransition(
-            opacity: _rowTitleAnimations[index],
-            child: Text(
-              row.title,
-              style: titleStyle,
-              maxLines: 4,
-              textAlign: TextAlign.start,
-              overflow: TextOverflow.ellipsis,
-            ),
+          padding: const EdgeInsets.only(right: 12, top: 4, bottom: 4),
+          child: Text(
+            row.title,
+            style: titleStyle,
+            maxLines: 4,
+            textAlign: TextAlign.start,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
         TableCell(
           verticalAlignment: TableCellVerticalAlignment.middle,
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 14),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             child: Center(
               child: FadeTransition(
                 opacity: _rowValue1Animations[index],
@@ -401,10 +415,10 @@ class _WrappedGroupEighthScreenState extends State<WrappedGroupEighthScreen>
     final dateStyle = GoogleFonts.poppins(
       fontSize: 12,
       fontWeight: FontWeight.w400,
-      color: Colors.white.withOpacity(0.9),
+      color: Colors.white.withValues(alpha: 0.9),
     );
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(top: 4, bottom: 4),
       child: FadeTransition(
         opacity: _rowValue2Animations[index],
         child: SizedBox(
@@ -425,7 +439,7 @@ class _WrappedGroupEighthScreenState extends State<WrappedGroupEighthScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: _numberBadgeBg.withOpacity(0.9),
+        color: _numberBadgeBg.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(20),
       ),
       child: twoLines && value.contains('\n')

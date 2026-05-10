@@ -23,6 +23,9 @@ class WhatsAppData {
   /// Último nombre del grupo según la última línea del export del tipo
   /// `… cambió el nombre del grupo de "…" a "…"`.
   final String? groupNameFromExport;
+
+  /// Número de líneas de cambio de nombre en el export (ES/EN).
+  final int groupRenameCount;
   
   // Primer mensaje
   final String? firstMessageDate; // YYYY-MM-DD
@@ -105,6 +108,7 @@ class WhatsAppData {
     required this.leftParticipants,
     required this.totalParticipantsWhoLeft,
     this.groupNameFromExport,
+    this.groupRenameCount = 0,
     this.firstMessageDate,
     this.firstMessageUser,
     this.firstMessageText,
@@ -155,6 +159,7 @@ class WhatsAppData {
       'leftParticipants': leftParticipants,
       'totalParticipantsWhoLeft': totalParticipantsWhoLeft,
       'groupNameFromExport': groupNameFromExport,
+      'groupRenameCount': groupRenameCount,
       'firstMessageDate': firstMessageDate,
       'firstMessageUser': firstMessageUser,
       'firstMessageText': firstMessageText,
@@ -210,6 +215,7 @@ class WhatsAppData {
       leftParticipants: List<String>.from(json['leftParticipants'] as List? ?? []),
       totalParticipantsWhoLeft: json['totalParticipantsWhoLeft'] as int? ?? 0,
       groupNameFromExport: json['groupNameFromExport'] as String?,
+      groupRenameCount: json['groupRenameCount'] as int? ?? 0,
       firstMessageDate: json['firstMessageDate'] as String?,
       firstMessageUser: json['firstMessageUser'] as String?,
       firstMessageText: json['firstMessageText'] as String?,
@@ -365,6 +371,24 @@ class WhatsAppProcessor {
     return last;
   }
 
+  /// Cuenta cuántas veces aparece un cambio de nombre en el export (mismos patrones ES/EN que arriba).
+  static int countGroupRenameEventsInExport(String content) {
+    var n = 0;
+    for (final raw in content.split('\n')) {
+      final line = raw.replaceAll(_stripBidiMarks, '');
+      if (_groupRenameEs.hasMatch(line) || _groupRenameEn.hasMatch(line)) {
+        n++;
+      }
+    }
+    return n;
+  }
+
+  static bool _isEndToEndEncryptionNoticeLine(String trimmedLine) {
+    final lower = trimmedLine.toLowerCase();
+    return lower.contains('los mensajes y las llamadas') ||
+        lower.contains('messages and calls are end-to-end encrypted');
+  }
+
   // Patrones regex para Android e iOS
   static final androidLineRegex = RegExp(
     r'^(\d{1,2})/(\d{1,2})/(\d{2,4}),\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s[-–]\s([^:]+):\s?([\s\S]*)$',
@@ -379,6 +403,7 @@ class WhatsAppProcessor {
   /// Procesa el contenido de un archivo de WhatsApp y extrae información completa
   static WhatsAppData processFile(String content) {
     final groupNameFromExport = extractLastGroupNameFromExport(content);
+    final groupRenameCount = countGroupRenameEventsInExport(content);
     final lines = content.split('\n');
     final participants = <String>{};
     final leftParticipants = <String>{};
@@ -777,8 +802,8 @@ class WhatsAppProcessor {
     for (final line in lines) {
       final trimmedLine = line.trim();
 
-      // Ignorar mensaje de cifrado
-      if (trimmedLine.contains('Los mensajes y las llamadas')) {
+      // Ignorar aviso de cifrado (ES/EN)
+      if (_isEndToEndEncryptionNoticeLine(trimmedLine)) {
         continue;
       }
 
@@ -1251,6 +1276,7 @@ class WhatsAppProcessor {
       leftParticipants: leftParticipants.toList(),
       totalParticipantsWhoLeft: leftParticipants.length,
       groupNameFromExport: groupNameFromExport,
+      groupRenameCount: groupRenameCount,
       firstMessageDate: firstMessageDate,
       firstMessageUser: firstMessageUser,
       firstMessageText: firstMessageText,

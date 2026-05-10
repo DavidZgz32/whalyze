@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../theme/wrapped_content_surfaces.dart';
 import '../../utils/participant_utils.dart';
 import '../../wrapped_group_roles.dart';
 import 'wrapped_group_second_screen.dart';
 
 class WrappedGroupRoleCard extends StatelessWidget {
-  static const Color _cardBackground = Color(0xFF334155);
-
   final GroupRoleDisplay role;
   final Color cardColor;
 
   const WrappedGroupRoleCard({
     required this.role,
-    this.cardColor = _cardBackground,
+    this.cardColor = WrappedContentSurfaces.roleCardBaseColor,
     super.key,
   });
 
@@ -25,26 +24,13 @@ class WrappedGroupRoleCard extends StatelessWidget {
         : WrappedGroupSecondScreen.shortParticipantName(name);
 
     final accentColor = name == null || name.isEmpty
-        ? Colors.white.withOpacity(0.18)
+        ? Colors.white.withValues(alpha: 0.18)
         : getParticipantColor(name);
 
     return DecoratedBox(
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border(
-          top: BorderSide(
-            color: accentColor,
-            width: 3,
-          ),
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x33000000),
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
+      decoration: WrappedContentSurfaces.roleCardDecoration(
+        accentTopColor: accentColor,
+        baseColor: cardColor,
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
