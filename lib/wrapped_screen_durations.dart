@@ -26,8 +26,8 @@ class WrappedScreenDurations {
   /// Índice 5 – Pantalla 6: Hitos del chat
   static const int pantalla5 = 28000;
 
-  /// Índice 6 – Pantalla 7: Media
-  static const int pantalla6 = 30000;
+  /// Índice 6 – Pantalla 7: Media (5 filas de datos + cierre)
+  static const int pantalla6 = 36000;
 
   /// Índice 7 – Pantalla 8: Palabras más usadas
   static const int pantalla7 = 19000;

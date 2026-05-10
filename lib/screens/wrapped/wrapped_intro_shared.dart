@@ -103,6 +103,58 @@ abstract final class WrappedIntroShared {
     return 'En este tiempo han nacido $births bebés en el mundo';
   }
 
+  /// Contexto de época según el año del primer mensaje (grupo). Antes de 2010 → texto de 2010; desde 2027 → 2026.
+  static String? cultureLineForFirstMessageYear(String? isoDate) {
+    if (isoDate == null) return null;
+    int year;
+    try {
+      year = DateTime.parse(isoDate).year;
+    } catch (_) {
+      return null;
+    }
+    if (year >= 2027) year = 2026;
+    if (year < 2010) year = 2010;
+
+    switch (year) {
+      case 2026:
+        return 'Cuando mandaste ese primer mensaje, todavía había gente diciendo "búscalo en Google" en vez de preguntarle a una IA.';
+      case 2025:
+        return 'Este grupo comenzó antes de que la IA estuviera en literalmente todas partes.';
+      case 2024:
+        return 'Cuando empezó este chat, Twitter todavía se llamaba Twitter hacía muy poco.';
+      case 2023:
+        return 'Este grupo comenzó antes del boom mundial de la IA generativa.';
+      case 2022:
+        return 'Cuando empezó este chat, ChatGPT todavía no existía.';
+      case 2021:
+        return 'Este grupo nació cuando aún llevábamos mascarillas a todas partes.';
+      case 2020:
+        return 'Este chat empezó en plena pandemia mundial.';
+      case 2019:
+        return 'Este grupo nació antes de que el mundo se parara por el COVID.';
+      case 2018:
+        return 'Cuando empezó este grupo, TikTok todavía no dominaba internet.';
+      case 2017:
+        return 'Este grupo comenzó cuando la gente seguía usando filtros de Snapchat.';
+      case 2016:
+        return 'Cuando nació este chat, Pokémon GO estaba revolucionando el mundo.';
+      case 2015:
+        return 'Este grupo nació cuando los selfies con palo inundaban todas las vacaciones.';
+      case 2014:
+        return 'Este chat nació cuando los audios de WhatsApp daban vergüenza.';
+      case 2013:
+        return 'Cuando empezó este grupo, Spotify aún no era lo normal en los coches.';
+      case 2012:
+        return 'Este grupo nació cuando Gangnam Style estaba en todas partes.';
+      case 2011:
+        return 'Este chat comenzó cuando WhatsApp aún costaba dinero en algunos móviles.';
+      case 2010:
+        return 'Este grupo empezó cuando Instagram acababa de nacer.';
+      default:
+        return 'Cuando mandaste ese primer mensaje, todavía había gente diciendo "búscalo en Google" en vez de preguntarle a una IA.';
+    }
+  }
+
   static TextStyle welcomeTitleStyle() => GoogleFonts.inter(
         fontSize: 28,
         fontWeight: FontWeight.w700,
@@ -126,6 +178,13 @@ abstract final class WrappedIntroShared {
         fontSize: 18,
         fontWeight: FontWeight.w400,
         color: Colors.white.withValues(alpha: 0.85),
+      );
+
+  static TextStyle yearCultureCaptionStyle() => GoogleFonts.poppins(
+        fontSize: 16,
+        fontWeight: FontWeight.w400,
+        color: Colors.white.withValues(alpha: 0.82),
+        height: 1.35,
       );
 
   /// Nombre del grupo encima de las bolitas (pantalla 1 grupal).

@@ -296,7 +296,7 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
     final n = widget.data.participants.length;
     switch (screenIndex) {
       case 0:
-        return 32000;
+        return WrappedGroupFirstScreen.estimateGroupFirstContentMs(n);
       case 1:
         final rows = math.min(10, n);
         if (rows <= 0) return 2000;
@@ -312,8 +312,8 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
         // Pantalla grupal 5: día/mes + ladder de emojis (animación propia ~1.2s).
         return 1600;
       case 5:
-        // Pantalla grupal 6: top 10 emojis, una línea cada 1500ms + entrada.
-        return 14500;
+        // Pantalla grupal 6: hasta 6 emojis + mención honorífica desde la derecha.
+        return WrappedGroupSixthScreen.estimateGroupSixthContentMs();
       case 6:
         // Pantalla grupal 7: Horarios de mensajes (heatmap + barras horarias).
         // Mismas animaciones que la pantalla 5 individual.

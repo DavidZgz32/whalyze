@@ -99,7 +99,7 @@ class WrappedEighthScreenState extends State<WrappedEighthScreen>
       CurvedAnimation(parent: _separatorController, curve: Curves.easeOut),
     );
 
-    const dataRowCount = 4;
+    const dataRowCount = 5;
     _rowTitleControllers = List.generate(
       dataRowCount,
       (_) => AnimationController(
@@ -207,7 +207,7 @@ class WrappedEighthScreenState extends State<WrappedEighthScreen>
     await _waitUntilUnpaused();
     if (aborted()) return;
 
-    for (var i = 0; i < 4; i++) {
+    for (var i = 0; i < 5; i++) {
       if (aborted()) return;
       await _waitUntilUnpaused();
       if (aborted()) return;
@@ -228,7 +228,7 @@ class WrappedEighthScreenState extends State<WrappedEighthScreen>
       if (_rowValue2Controllers[i].value < 1.0) {
         await _rowValue2Controllers[i].forward();
       }
-      if (i < 3) {
+      if (i < 4) {
         await Future.delayed(const Duration(milliseconds: 1200));
       }
     }
@@ -393,6 +393,8 @@ class WrappedEighthScreenState extends State<WrappedEighthScreen>
     final urls2 = widget.data.sharedUrlsByParticipant[p2] ?? 0;
     final deleted1 = widget.data.deletedMessagesByParticipant[p1] ?? 0;
     final deleted2 = widget.data.deletedMessagesByParticipant[p2] ?? 0;
+    final edited1 = widget.data.editedMessagesByParticipant[p1] ?? 0;
+    final edited2 = widget.data.editedMessagesByParticipant[p2] ?? 0;
 
     final String? deletedWinnerName;
     if (deleted1 > deleted2 && deleted1 > 0) {
@@ -423,6 +425,11 @@ class WrappedEighthScreenState extends State<WrappedEighthScreen>
         title: 'Mensajes borrados',
         value1: '$deleted1',
         value2: '$deleted2',
+      ),
+      _MediaRowData(
+        title: 'Mensajes editados',
+        value1: '$edited1',
+        value2: '$edited2',
       ),
     ];
 

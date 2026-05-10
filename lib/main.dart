@@ -829,8 +829,13 @@ class _ExportHowToBottomSheet extends StatefulWidget {
 }
 
 class _ExportHowToBottomSheetState extends State<_ExportHowToBottomSheet> {
+  static const _exportStep0Lead =
+      'Ve a WhatsApp, abre el chat, pulsa los tres puntos (⋮) y toca “Exportar chat”.';
+  static const _exportStep0PrivacyNote =
+      'Asegúrate de que si es un grupo, en Ajustes del grupo esté desactivada la privacidad avanzada del chat.';
+
   static const _stepTexts = <String>[
-    'Ve a WhatsApp, abre el chat, pulsa los tres puntos (⋮) y toca “Exportar chat”.',
+    '$_exportStep0Lead\n$_exportStep0PrivacyNote',
     'Haz click en "Más"',
     'Selecciona "Sin archivos"',
     'Abre el archivo con Whalyze',
@@ -1016,12 +1021,34 @@ class _ExportHowToBottomSheetState extends State<_ExportHowToBottomSheet> {
             const SizedBox(height: 10),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 220),
-              child: Text(
-                _stepTexts[_pageIndex],
-                key: ValueKey<int>(_pageIndex),
-                textAlign: TextAlign.center,
-                style: stepStyle,
-              ),
+              child: _pageIndex == 0
+                  ? Column(
+                      key: const ValueKey<int>(0),
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          _exportStep0Lead,
+                          textAlign: TextAlign.center,
+                          style: stepStyle,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _exportStep0PrivacyNote,
+                          textAlign: TextAlign.center,
+                          style: stepStyle.copyWith(
+                            fontSize: (stepStyle.fontSize ?? 16) - 2,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Text(
+                      _stepTexts[_pageIndex],
+                      key: ValueKey<int>(_pageIndex),
+                      textAlign: TextAlign.center,
+                      style: stepStyle,
+                    ),
             ),
             const SizedBox(height: 10),
             Container(

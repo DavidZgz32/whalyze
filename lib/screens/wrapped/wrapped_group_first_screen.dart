@@ -5,6 +5,9 @@ import '../../utils/participant_utils.dart';
 import '../../whatsapp_processor.dart';
 import 'wrapped_intro_shared.dart';
 
+/// Pausa al final de la pantalla 1 grupal para leer el último bloque (debe coincidir con la estimación).
+const int _kWrappedGroupFirstFinalReadPauseMs = 3000;
+
 /// Pantalla 1 del Wrapped grupal: bienvenida, hasta 12 bolitas con iniciales y color por persona.
 class WrappedGroupFirstScreen extends StatefulWidget {
   final WhatsAppData data;
@@ -12,6 +15,47 @@ class WrappedGroupFirstScreen extends StatefulWidget {
 
   /// Índice en el slideshow (0). Cuando acaban todas las animaciones de esta pantalla.
   final ValueChanged<int>? onGroupScreenAnimationsComplete;
+
+  /// Duración estimada de la fase de animaciones (sin el hold de 1 s del slideshow).
+  /// Debe coincidir con los delays y duraciones de [WrappedGroupFirstScreenState].
+  static int estimateGroupFirstContentMs(int participantCount) {
+    final n = participantCount.clamp(1, 12);
+    const titleFade = 1200;
+    const delayAfterTitleFade = 800;
+    const titlePos = 1000;
+    const delayAfterTitlePos = 600;
+    const groupNameMax = 450;
+    const delayAfterGroupName = 150;
+    const ballDur = 400;
+    const betweenBalls = 80;
+    final ballsMs = n * ballDur + (n > 1 ? (n - 1) * betweenBalls : 0);
+    const waitBeforeParticipants = 1000;
+    const participantsFade = 600;
+    const delayBeforeFirstMessage = 350;
+    const firstMsg = 1000;
+    const delayAfterFirstMessage = 1200;
+    const days = 1000;
+    const delayAfterDays = 1000;
+    const random = 1000;
+    const yearCaptionExtra = 350 + 800;
+    return titleFade +
+        delayAfterTitleFade +
+        titlePos +
+        delayAfterTitlePos +
+        groupNameMax +
+        delayAfterGroupName +
+        ballsMs +
+        waitBeforeParticipants +
+        participantsFade +
+        delayBeforeFirstMessage +
+        firstMsg +
+        delayAfterFirstMessage +
+        days +
+        delayAfterDays +
+        random +
+        yearCaptionExtra +
+        _kWrappedGroupFirstFinalReadPauseMs;
+  }
 
   const WrappedGroupFirstScreen({
     super.key,
@@ -36,8 +80,11 @@ class WrappedGroupFirstScreenState extends State<WrappedGroupFirstScreen>
   late AnimationController _firstMessageController;
   late AnimationController _daysController;
   late AnimationController _randomMessageController;
+  late AnimationController _participantsLabelController;
   AnimationController? _groupNameController;
   Animation<double>? _groupNameAnimation;
+  AnimationController? _yearCaptionController;
+  Animation<double>? _yearCaptionAnimation;
 
   late Animation<double> _titleFadeAnimation;
   late Animation<double> _titlePositionAnimation;
@@ -45,8 +92,10 @@ class WrappedGroupFirstScreenState extends State<WrappedGroupFirstScreen>
   late Animation<double> _firstMessageAnimation;
   late Animation<double> _daysAnimation;
   late Animation<double> _randomMessageAnimation;
+  late Animation<double> _participantsLabelAnimation;
 
   String? _randomMessage;
+  String? _yearCultureLine;
   bool _paused = false;
   int _sequenceGen = 0;
 
@@ -61,6 +110,9 @@ class WrappedGroupFirstScreenState extends State<WrappedGroupFirstScreen>
       widget.data.firstMessageDate,
     );
     _randomMessage = WrappedIntroShared.randomPeriodMessage(days);
+    _yearCultureLine = WrappedIntroShared.cultureLineForFirstMessageYear(
+      widget.data.firstMessageDate,
+    );
 
     final groupLabel = widget.data.groupNameFromExport?.trim();
     if (groupLabel != null && groupLabel.isNotEmpty) {
@@ -103,6 +155,20 @@ class WrappedGroupFirstScreenState extends State<WrappedGroupFirstScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     );
+    _participantsLabelController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    if (_yearCultureLine != null && _yearCultureLine!.isNotEmpty) {
+      _yearCaptionController = AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 800),
+      );
+      _yearCaptionAnimation = CurvedAnimation(
+        parent: _yearCaptionController!,
+        curve: Curves.easeOut,
+      );
+    }
 
     _titleFadeAnimation = CurvedAnimation(
       parent: _titleFadeController,
@@ -127,6 +193,10 @@ class WrappedGroupFirstScreenState extends State<WrappedGroupFirstScreen>
       parent: _randomMessageController,
       curve: Curves.easeOut,
     );
+    _participantsLabelAnimation = CurvedAnimation(
+      parent: _participantsLabelController,
+      curve: Curves.easeOut,
+    );
 
     _runAnimationSequence();
   }
@@ -149,7 +219,7 @@ class WrappedGroupFirstScreenState extends State<WrappedGroupFirstScreen>
     await _waitUntilUnpaused();
     if (aborted()) return;
 
-    await Future.delayed(const Duration(milliseconds: 1200));
+    await Future.delayed(const Duration(milliseconds: 800));
     if (aborted()) return;
     await _waitUntilUnpaused();
     if (aborted()) return;
@@ -161,7 +231,7 @@ class WrappedGroupFirstScreenState extends State<WrappedGroupFirstScreen>
     await _waitUntilUnpaused();
     if (aborted()) return;
 
-    await Future.delayed(const Duration(milliseconds: 900));
+    await Future.delayed(const Duration(milliseconds: 600));
     if (aborted()) return;
     await _waitUntilUnpaused();
     if (aborted()) return;
@@ -174,23 +244,38 @@ class WrappedGroupFirstScreenState extends State<WrappedGroupFirstScreen>
     await _waitUntilUnpaused();
     if (aborted()) return;
 
-    await Future.delayed(const Duration(milliseconds: 200));
+    await Future.delayed(const Duration(milliseconds: 150));
     if (aborted()) return;
     await _waitUntilUnpaused();
     if (aborted()) return;
 
-    for (final c in _ballControllers) {
+    for (var i = 0; i < _ballControllers.length; i++) {
+      final c = _ballControllers[i];
       if (c.value < 1) {
         await c.forward();
       }
       if (aborted()) return;
       await _waitUntilUnpaused();
       if (aborted()) return;
-      await Future.delayed(const Duration(milliseconds: 120));
-      if (aborted()) return;
+      if (i < _ballControllers.length - 1) {
+        await Future.delayed(const Duration(milliseconds: 80));
+        if (aborted()) return;
+      }
     }
 
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 1000));
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    if (_participantsLabelController.value < 1) {
+      await _participantsLabelController.forward();
+    }
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    await Future.delayed(const Duration(milliseconds: 350));
     if (aborted()) return;
     await _waitUntilUnpaused();
     if (aborted()) return;
@@ -202,7 +287,7 @@ class WrappedGroupFirstScreenState extends State<WrappedGroupFirstScreen>
     await _waitUntilUnpaused();
     if (aborted()) return;
 
-    await Future.delayed(const Duration(milliseconds: 2400));
+    await Future.delayed(const Duration(milliseconds: 1200));
     if (aborted()) return;
     await _waitUntilUnpaused();
     if (aborted()) return;
@@ -214,7 +299,7 @@ class WrappedGroupFirstScreenState extends State<WrappedGroupFirstScreen>
     await _waitUntilUnpaused();
     if (aborted()) return;
 
-    await Future.delayed(const Duration(milliseconds: 2300));
+    await Future.delayed(const Duration(milliseconds: 1000));
     if (aborted()) return;
     await _waitUntilUnpaused();
     if (aborted()) return;
@@ -225,6 +310,31 @@ class WrappedGroupFirstScreenState extends State<WrappedGroupFirstScreen>
       await _randomMessageController.forward();
     }
     if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    final ycc = _yearCaptionController;
+    if (ycc != null &&
+        _yearCultureLine != null &&
+        _yearCultureLine!.isNotEmpty &&
+        ycc.value < 1) {
+      await Future.delayed(const Duration(milliseconds: 350));
+      if (aborted()) return;
+      await _waitUntilUnpaused();
+      if (aborted()) return;
+      await ycc.forward();
+    }
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
+    await Future.delayed(
+      const Duration(milliseconds: _kWrappedGroupFirstFinalReadPauseMs),
+    );
+    if (aborted()) return;
+    await _waitUntilUnpaused();
+    if (aborted()) return;
+
     if (mounted) {
       widget.onGroupScreenAnimationsComplete?.call(0);
     }
@@ -262,9 +372,11 @@ class WrappedGroupFirstScreenState extends State<WrappedGroupFirstScreen>
     for (final c in _ballControllers) {
       c.reset();
     }
+    _participantsLabelController.reset();
     _firstMessageController.reset();
     _daysController.reset();
     _randomMessageController.reset();
+    _yearCaptionController?.reset();
     _runAnimationSequence();
   }
 
@@ -279,9 +391,13 @@ class WrappedGroupFirstScreenState extends State<WrappedGroupFirstScreen>
     for (final c in _ballControllers) {
       c.value = 1;
     }
+    _participantsLabelController.value = 1;
     _firstMessageController.value = 1;
     _daysController.value = 1;
     _randomMessageController.value = 1;
+    if (_yearCaptionController != null) {
+      _yearCaptionController!.value = 1;
+    }
     if (mounted) setState(() {});
   }
 
@@ -293,9 +409,11 @@ class WrappedGroupFirstScreenState extends State<WrappedGroupFirstScreen>
     for (final c in _ballControllers) {
       c.stop(canceled: false);
     }
+    _participantsLabelController.stop(canceled: false);
     _firstMessageController.stop(canceled: false);
     _daysController.stop(canceled: false);
     _randomMessageController.stop(canceled: false);
+    _yearCaptionController?.stop(canceled: false);
   }
 
   void resumeAnimations() {
@@ -314,9 +432,13 @@ class WrappedGroupFirstScreenState extends State<WrappedGroupFirstScreen>
     for (final c in _ballControllers) {
       forwardIfInProgress(c);
     }
+    forwardIfInProgress(_participantsLabelController);
     forwardIfInProgress(_firstMessageController);
     forwardIfInProgress(_daysController);
     forwardIfInProgress(_randomMessageController);
+    if (_yearCaptionController != null) {
+      forwardIfInProgress(_yearCaptionController!);
+    }
   }
 
   @override
@@ -326,9 +448,11 @@ class WrappedGroupFirstScreenState extends State<WrappedGroupFirstScreen>
     for (final c in _ballControllers) {
       c.dispose();
     }
+    _participantsLabelController.dispose();
     _firstMessageController.dispose();
     _daysController.dispose();
     _randomMessageController.dispose();
+    _yearCaptionController?.dispose();
     _groupNameController?.dispose();
     super.dispose();
   }
@@ -348,6 +472,10 @@ class WrappedGroupFirstScreenState extends State<WrappedGroupFirstScreen>
             : null;
 
     final groupName = widget.data.groupNameFromExport?.trim();
+    final participantTotal = widget.data.participants.length;
+    final participantsLine = participantTotal == 1
+        ? '1 participante'
+        : '$participantTotal participantes';
 
     final screenHeight = MediaQuery.of(context).size.height;
     final topPadding = MediaQuery.of(context).padding.top +
@@ -395,72 +523,122 @@ class WrappedGroupFirstScreenState extends State<WrappedGroupFirstScreen>
               left: 24,
               right: 24,
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 12),
-                if (groupName != null &&
-                    groupName.isNotEmpty &&
-                    _groupNameAnimation != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: FadeTransition(
-                      opacity: _groupNameAnimation!,
-                      child: Text(
-                        groupName,
-                        textAlign: TextAlign.center,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: WrappedIntroShared.groupNameLabelStyle(),
+            child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 12),
+                  if (groupName != null &&
+                      groupName.isNotEmpty &&
+                      _groupNameAnimation != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: FadeTransition(
+                        opacity: _groupNameAnimation!,
+                        child: Text(
+                          groupName,
+                          textAlign: TextAlign.center,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: WrappedIntroShared.groupNameLabelStyle(),
+                        ),
                       ),
                     ),
-                  ),
-                if (_displayParticipants.isNotEmpty)
-                  Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: List.generate(_displayParticipants.length, (i) {
-                      return FadeTransition(
-                        opacity: _ballAnimations[i],
-                        child: _buildBall(_displayParticipants[i]),
+                  if (_displayParticipants.isNotEmpty)
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: List.generate(_displayParticipants.length, (i) {
+                        return FadeTransition(
+                          opacity: _ballAnimations[i],
+                          child: _buildBall(_displayParticipants[i]),
+                        );
+                      }),
+                    ),
+                  AnimatedBuilder(
+                    animation: _participantsLabelController,
+                    builder: (context, _) {
+                      if (_participantsLabelController.value == 0) {
+                        return const SizedBox.shrink();
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: FadeTransition(
+                          opacity: _participantsLabelAnimation,
+                          child: Text(
+                            participantsLine,
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white.withValues(alpha: 0.88),
+                            ),
+                          ),
+                        ),
                       );
-                    }),
+                    },
                   ),
-                const SizedBox(height: 28),
-                FadeTransition(
-                  opacity: _firstMessageAnimation,
-                  child: Text(
-                    limitedFirstMessage != null && firstDayText.isNotEmpty
-                        ? 'todo empezó con un... "$limitedFirstMessage" $firstDayText'
-                        : limitedFirstMessage != null
-                            ? 'todo empezó con un... "$limitedFirstMessage"'
-                            : 'todo empezó con un...',
-                    textAlign: TextAlign.center,
-                    style: WrappedIntroShared.firstMessageBlockStyle(),
-                  ),
-                ),
-                const SizedBox(height: 28),
-                FadeTransition(
-                  opacity: _daysAnimation,
-                  child: Text(
-                    'Desde entonces han pasado $daysSince días',
-                    textAlign: TextAlign.center,
-                    style: WrappedIntroShared.daysSinceBlockStyle(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                if (_randomMessage != null && _randomMessage!.isNotEmpty)
+                  const SizedBox(height: 28),
                   FadeTransition(
-                    opacity: _randomMessageAnimation,
+                    opacity: _firstMessageAnimation,
                     child: Text(
-                      _randomMessage!,
+                      limitedFirstMessage != null && firstDayText.isNotEmpty
+                          ? 'todo empezó con un... "$limitedFirstMessage" $firstDayText'
+                          : limitedFirstMessage != null
+                              ? 'todo empezó con un... "$limitedFirstMessage"'
+                              : 'todo empezó con un...',
                       textAlign: TextAlign.center,
-                      style: WrappedIntroShared.periodFactBlockStyle(),
+                      style: WrappedIntroShared.firstMessageBlockStyle(),
                     ),
                   ),
-              ],
+                  const SizedBox(height: 28),
+                  FadeTransition(
+                    opacity: _daysAnimation,
+                    child: Text(
+                      'Desde entonces han pasado $daysSince días',
+                      textAlign: TextAlign.center,
+                      style: WrappedIntroShared.daysSinceBlockStyle(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (_randomMessage != null && _randomMessage!.isNotEmpty)
+                    FadeTransition(
+                      opacity: _randomMessageAnimation,
+                      child: Text(
+                        _randomMessage!,
+                        textAlign: TextAlign.center,
+                        style: WrappedIntroShared.periodFactBlockStyle(),
+                      ),
+                    ),
+                  if (_yearCaptionController != null &&
+                      _yearCaptionAnimation != null &&
+                      _yearCultureLine != null &&
+                      _yearCultureLine!.isNotEmpty)
+                    AnimatedBuilder(
+                      animation: _yearCaptionController!,
+                      builder: (context, _) {
+                        if (_yearCaptionController!.value == 0) {
+                          return const SizedBox.shrink();
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: FadeTransition(
+                            opacity: _yearCaptionAnimation!,
+                            child: Text(
+                              _yearCultureLine!,
+                              textAlign: TextAlign.center,
+                              style:
+                                  WrappedIntroShared.yearCultureCaptionStyle(),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                ],
+              ),
             ),
           ),
         ],

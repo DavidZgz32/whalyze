@@ -595,11 +595,15 @@ class WhatsAppProcessor {
             (deletedMessagesByParticipant[participant] ?? 0) + 1;
       }
 
-      // Mensajes editados
-      if (trimmedText.contains('<Se editó este mensaje.>') ||
-          trimmedText.contains('<This message was edited>')) {
+      // Mensajes editados: cada aparición del marcador del export (+1 c/u).
+      const editTagEs = '<Se editó este mensaje.>';
+      const editTagEn = '<This message was edited>';
+      final editCount =
+          editTagEs.allMatches(trimmedText).length +
+          editTagEn.allMatches(trimmedText).length;
+      if (editCount > 0) {
         editedMessagesByParticipant[participant] =
-            (editedMessagesByParticipant[participant] ?? 0) + 1;
+            (editedMessagesByParticipant[participant] ?? 0) + editCount;
       }
 
       // Multimedia omitido

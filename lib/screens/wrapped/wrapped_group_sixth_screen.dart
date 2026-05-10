@@ -9,6 +9,17 @@ class WrappedGroupSixthScreen extends StatefulWidget {
   final int totalScreens;
   final ValueChanged<int>? onGroupScreenAnimationsComplete;
 
+  /// Máx. 6 filas de emoji + pausa + entrada del texto honorífico (alineado con el state).
+  static int estimateGroupSixthContentMs() {
+    const staggerMs = 1500;
+    const rowAnimMs = 450;
+    const honorGapMs = 200;
+    const honorAnimMs = 750;
+    const maxEmojiRows = 6;
+    const lastRowDoneMs = (maxEmojiRows - 1) * staggerMs + rowAnimMs;
+    return lastRowDoneMs + honorGapMs + honorAnimMs;
+  }
+
   const WrappedGroupSixthScreen({
     super.key,
     required this.data,
@@ -24,6 +35,8 @@ class _WrappedGroupSixthScreenState extends State<WrappedGroupSixthScreen>
     with TickerProviderStateMixin {
   static const int _staggerMs = 1500;
   static const int _rowAnimMs = 450;
+  static const int _honorGapAfterLastEmojiMs = 200;
+  static const int _honorAnimMs = 750;
 
   late final List<MapEntry<String, int>> _topEmojis;
   late final _HonorMention _honorMention;
@@ -31,11 +44,33 @@ class _WrappedGroupSixthScreenState extends State<WrappedGroupSixthScreen>
   late final List<Animation<double>> _rowOpacity;
   late final List<Animation<Offset>> _rowSlide;
 
+  late final AnimationController _honorMentionController;
+  late final Animation<double> _honorMentionOpacity;
+  late final Animation<Offset> _honorMentionSlide;
+
   @override
   void initState() {
     super.initState();
     _topEmojis = _computeTopEmojis();
     _honorMention = _computeHonorMention();
+
+    _honorMentionController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: _honorAnimMs),
+    );
+    _honorMentionOpacity = CurvedAnimation(
+      parent: _honorMentionController,
+      curve: Curves.easeOut,
+    );
+    _honorMentionSlide = Tween<Offset>(
+      begin: const Offset(1.25, 0),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _honorMentionController,
+        curve: Curves.easeOutCubic,
+      ),
+    );
 
     _rowControllers = List.generate(
       _topEmojis.length,
@@ -66,20 +101,22 @@ class _WrappedGroupSixthScreenState extends State<WrappedGroupSixthScreen>
       });
     }
 
-    final doneMs = _topEmojis.isEmpty
+    final int lastEmojiDoneMs = _topEmojis.isEmpty
         ? 0
         : ((_topEmojis.length - 1) * _staggerMs) + _rowAnimMs;
-    if (doneMs == 0) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        widget.onGroupScreenAnimationsComplete?.call(5);
-      });
-    } else {
-      Future<void>.delayed(Duration(milliseconds: doneMs), () {
-        if (!mounted) return;
-        widget.onGroupScreenAnimationsComplete?.call(5);
-      });
-    }
+    final int honorStartMs =
+        lastEmojiDoneMs + (_topEmojis.isEmpty ? 400 : _honorGapAfterLastEmojiMs);
+
+    Future<void>.delayed(Duration(milliseconds: honorStartMs), () {
+      if (!mounted) return;
+      _honorMentionController.forward();
+    });
+
+    final doneMs = honorStartMs + _honorAnimMs;
+    Future<void>.delayed(Duration(milliseconds: doneMs), () {
+      if (!mounted) return;
+      widget.onGroupScreenAnimationsComplete?.call(5);
+    });
   }
 
   List<MapEntry<String, int>> _computeTopEmojis() {
@@ -144,6 +181,7 @@ class _WrappedGroupSixthScreenState extends State<WrappedGroupSixthScreen>
     for (final c in _rowControllers) {
       c.dispose();
     }
+    _honorMentionController.dispose();
     super.dispose();
   }
 
@@ -213,15 +251,21 @@ class _WrappedGroupSixthScreenState extends State<WrappedGroupSixthScreen>
                         ),
                       ],
                     const SizedBox(height: 20),
-                    Text(
-                      '🎖️ Mención honorífica a ${_honorMention.user}, responsable del ${_honorMention.percentageText}% de los emojis del grupo y de llenar el chat con su emoji favorito ${_honorMention.favoriteEmoji} hasta ${WrappedIntroShared.formatThousands(_honorMention.favoriteEmojiCount)} veces.',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.poppins(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white.withValues(alpha: 0.92),
-                        fontStyle: FontStyle.italic,
-                        height: 1.35,
+                    FadeTransition(
+                      opacity: _honorMentionOpacity,
+                      child: SlideTransition(
+                        position: _honorMentionSlide,
+                        child: Text(
+                          '🎖️ Mención honorífica a ${_honorMention.user}, responsable del ${_honorMention.percentageText}% de los emojis del grupo y de llenar el chat con su emoji favorito ${_honorMention.favoriteEmoji} hasta ${WrappedIntroShared.formatThousands(_honorMention.favoriteEmojiCount)} veces.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.poppins(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white.withValues(alpha: 0.92),
+                            fontStyle: FontStyle.italic,
+                            height: 1.35,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
