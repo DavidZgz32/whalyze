@@ -312,9 +312,16 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
         // Pantalla grupal 5: día/mes + ladder de emojis (animación propia ~1.2s).
         return 1600;
       case 5:
+        // Pantalla grupal 6: top 10 emojis, una línea cada 1500ms + entrada.
+        return 14500;
       case 6:
+        // Pantalla grupal 7: Horarios de mensajes (heatmap + barras horarias).
+        // Mismas animaciones que la pantalla 5 individual.
+        return 22000;
       case 7:
-        return 600;
+        // Pantalla grupal 8: Hitos del chat (4 filas con stagger).
+        // Mismas animaciones que la pantalla 6 individual.
+        return 28000;
       default:
         return 5000;
     }
@@ -687,16 +694,19 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
           );
         case 5:
           return WrappedGroupSixthScreen(
+            data: data,
             totalScreens: _totalScreens,
             onGroupScreenAnimationsComplete: _onGroupScreenAnimationsComplete,
           );
         case 6:
           return WrappedGroupSeventhScreen(
+            data: data,
             totalScreens: _totalScreens,
             onGroupScreenAnimationsComplete: _onGroupScreenAnimationsComplete,
           );
         case 7:
           return WrappedGroupEighthScreen(
+            data: data,
             totalScreens: _totalScreens,
             onGroupScreenAnimationsComplete: _onGroupScreenAnimationsComplete,
           );
@@ -866,32 +876,19 @@ class _WrappedSlideshowState extends State<WrappedSlideshow>
     final stripTop = _navStripTop(context);
     final stripW = _navStripWidth(context);
     final bottomPad = MediaQuery.of(context).padding.bottom + 36;
-    final bool useGroup2Bg = _isGroupChat && _currentScreen == 1;
-
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       onLongPressStart: (_) => _pauseAnimation(),
       onLongPressEnd: (_) {}, // Mantener pulsado = pausa y queda pausado (como el botón)
       child: Container(
         decoration: BoxDecoration(
-          image: useGroup2Bg
-              ? const DecorationImage(
-                  image: AssetImage('assets/images/fondo-grupal-2.png'),
-                  fit: BoxFit.cover,
-                )
-              : null,
-          gradient: LinearGradient(
+          gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: useGroup2Bg
-                ? [
-                    const Color(0xFF00C980).withValues(alpha: 0.55),
-                    const Color(0xFF00A6B6).withValues(alpha: 0.55),
-                  ]
-                : const [
-                    Color(0xFF00C980),
-                    Color(0xFF00A6B6),
-                  ],
+            colors: [
+              Color(0xFF00C980),
+              Color(0xFF00A6B6),
+            ],
           ),
         ),
         child: Stack(

@@ -9,14 +9,18 @@ import 'package:uuid/uuid.dart';
 import '../monetization_config.dart';
 
 const _kPrefsDeviceId = 'firebase_user_device_id';
+
 /// Última vez que se escribió [lastActiveAt] en Firestore (epoch ms local).
-const _kPrefsLastActiveFirestoreWriteAt = 'user_last_active_firestore_write_at_ms';
+const _kPrefsLastActiveFirestoreWriteAt =
+    'user_last_active_firestore_write_at_ms';
+
 /// Caché local del campo Firestore [wrappedCount] (créditos restantes).
 const _kPrefsWrappedRemaining = 'user_wrapped_remaining_cache';
 const _kPrefsHasPaid = 'user_has_paid_cache';
 
 /// Créditos de wrapped disponibles (inicio 2 gratis; anuncios/IAP suman).
 const _kFieldWrappedCount = 'wrappedCount';
+
 /// Esquema v2: [wrappedCount] = créditos restantes (no confundir con legacy).
 const _kFieldSchemaVersion = 'schemaVersion';
 const _kSchemaVersion = 2;

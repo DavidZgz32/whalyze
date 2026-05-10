@@ -140,12 +140,42 @@ class _AppStartState extends State<AppStart> {
   @override
   Widget build(BuildContext context) {
     if (_onboardingDone == null) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFE8F2FF),
-        body: Center(
-          child: CircularProgressIndicator(
-            color: Color(0xFF00C980),
-            strokeWidth: 2,
+      return Scaffold(
+        backgroundColor: const Color(0xFFB8E986),
+        body: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: Image.asset(
+                    'assets/images/saludo_home.png',
+                    height: 132,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Text(
+                  'Whalyze',
+                  style: GoogleFonts.poppins(
+                    fontSize: 34,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF00C980),
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                const SizedBox(height: 28),
+                const SizedBox(
+                  width: 30,
+                  height: 30,
+                  child: CircularProgressIndicator(
+                    color: Color(0xFF00C980),
+                    strokeWidth: 2.5,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -661,10 +691,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   const Spacer(flex: 1),
                   // Logo: saludo_home (personaje + Whalyze)
-                  Image.asset(
-                    'assets/images/saludo_home.png',
-                    height: 120,
-                    fit: BoxFit.contain,
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(28),
+                    child: Image.asset(
+                      'assets/images/saludo_home.png',
+                      height: 120,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                   const SizedBox(height: 32),
                   // Título

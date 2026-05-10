@@ -235,7 +235,7 @@ class _RankRow extends StatelessWidget {
             maxLines: 1,
             softWrap: false,
             style: GoogleFonts.poppins(
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: FontWeight.w600,
               color: participantColor,
             ),
